@@ -78,6 +78,9 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
+	// Disable buffering, so our fprints go through immediately
+	setbuf(stdout, NULL);
+
 	// Run the main loop
 	if (pa_mainloop_run(mlp, NULL) < 0)
 	{
