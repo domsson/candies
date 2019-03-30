@@ -1,4 +1,5 @@
-#include <stdio.h>             // printf, NULL, EXIT_SUCCESS etc
+#include <stdio.h>             // fprintf
+#include <stdlib.h>            // NULL, EXIT_*
 #include <pulse/pulseaudio.h>
 
 /**
@@ -57,7 +58,7 @@ void cb_ctx_status(pa_context *c, void *data)
 	pa_context_get_server_info(c, cb_server_info, data);
 }
 
-int main()
+int main(int argc, char **argv)
 {
 	// Prepare all the important things
 	pa_context *ctx = NULL;
