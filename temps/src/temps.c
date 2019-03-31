@@ -69,6 +69,18 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
 
 }
 
+void list_chips()
+{
+	// Iterate over the chips
+	sensors_chip_name const *cc = NULL; // current chip
+	int c = 0;
+
+	while(cc = sensors_get_detected_chips(NULL, &c))
+	{
+		fprintf(stdout, "%s\n", cc->prefix);
+	}
+}
+
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:   %s [-v] [-c <chip_prefix>] [-f <feature_label>]\n", invocation);
@@ -80,6 +92,7 @@ void help(char *invocation)
 // - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
 int main(int argc, char **argv)
 {
+	int list = 0;
 	char *chip = NULL;
 	char *feat = NULL;
 	int verbatim = 0;
@@ -87,7 +100,7 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt (argc, argv, "c:f:vh")) != -1)
+	while ((o = getopt (argc, argv, "c:f:vlh")) != -1)
 	{
 		switch (o)
 		{
@@ -100,6 +113,9 @@ int main(int argc, char **argv)
 			case 'v':
 				verbatim = 1;
 				break;
+			case 'l':
+				list = 1;
+				break;
 			case 'h':
 				help(argv[0]);
 				return EXIT_SUCCESS;
@@ -111,6 +127,13 @@ int main(int argc, char **argv)
 	{
 		// Error initializing sensors
 		return EXIT_FAILURE;
+	}
+
+	// List chips and exit (if that's what we're supposed to do)
+	if (list)
+	{
+		list_chips();
+		return EXIT_SUCCESS;
 	}
 
 	// Find the chip 'chip' or just the first one we encounter
