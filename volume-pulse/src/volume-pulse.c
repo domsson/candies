@@ -23,7 +23,7 @@ void cb_sink_info(pa_context *c, const pa_sink_info *i, int eol, void *data)
 	// Get the sink volume, finally!
 	pa_volume_t vol = pa_cvolume_avg(&i->volume);
 	char pretty_vol[16];
-	fprintf(stdout, "%s", pa_volume_snprint(pretty_vol, 16, vol));
+	fprintf(stdout, "%s\n", pa_volume_snprint(pretty_vol, 16, vol));
 
 	// We're done, let's quit the main loop
 	pa_mainloop_quit(data, 0);
