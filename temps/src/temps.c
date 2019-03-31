@@ -9,6 +9,11 @@
 // if we are on a Pi, we could go another route for it:
 // https://www.raspberrypi.org/forums/viewtopic.php?t=208548
 
+/**
+ * Goes through the list of chips and looks for the one with the given prefix.
+ * If the specified chip is found, it will be returned, otherwise the first one
+ * found will be returned. If no chip is found, NULL will be returned.
+ */
 sensors_chip_name const *find_chip(const char *prefix)
 {
 	// Iterate over the chips
@@ -34,9 +39,13 @@ sensors_chip_name const *find_chip(const char *prefix)
 	return cm;
 }
 
+/**
+ * Tries to read the actual temperature value from the specified feature
+ * of the specified chip. Writes the temperature vlue to ret. Returns 0 on
+ * success, -1 on error. 
+ */
 int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, double *ret)
 {
-
 	// Loop over the subfeatures
 	sensors_subfeature const *sc; // current subfeature
 	int s = 0;
@@ -69,6 +78,9 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
 
 }
 
+/**
+ * Prints all detected chips to stdout.
+ */
 void list_chips()
 {
 	// Iterate over the chips
@@ -81,6 +93,9 @@ void list_chips()
 	}
 }
 
+/**
+ * Prints usage information.
+ */
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:   %s [-v] [-c <chip_prefix>] [-f <feature_label>]\n", invocation);
