@@ -1,8 +1,8 @@
 # volume-mon
 
 Simple tool that monitors changes of the default PulseAudio sink.  
-Whenever a change is registered (usually a change of volume or mute state), 
-prints `"change detected\n"` to `stdout`.
+Prints `"change detected\n"` to `stdout` when a change is detected. 
+Such changes could be volume level or mute state. 
 
 ## Dependencies
 
