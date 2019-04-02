@@ -39,5 +39,5 @@ Note that `-c` and `-f` currently use `strstr()` internally, which means the giv
 
 ## To do
 
-- Add `-u` option (if given, print the temperature unit)
+- Add `-u` option (if given, also print the temperature unit)
 - Add `-m` option (keep running, print whenever temperature change detected)
