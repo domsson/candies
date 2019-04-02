@@ -29,12 +29,12 @@ otherwise `temps` does nothing.
 
 ## Usage
 
-    temps [-h] [-l] [-m] [-u] [-v] -c CHIP -f FEATURE
+    temps [-h] [-l] [-m] [-p NUM] [-u] [-v] -c CHIP -f FEATURE
 
 - `-h` print usage information, then exit
 - `-l` list all available chips and their features, then exit
 - `-m` monitor mode (keep running, print temperature as it changes) -- NOT YET IMPLEMENTED
-- `-p NUM` precision (number of decimals to include in the output)
+- `-p` precision: number of decimals to include in the output
 - `-u` add the Celcius unit (`" °C"`) to the output
 - `-v` enable verbose mode (prints additional information to `stderr`)
 
