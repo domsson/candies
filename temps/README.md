@@ -10,12 +10,13 @@ would also be able to query other temperature sensors (_chips_), if available. S
 ## Concept 
 
 `temps` uses `libsensors` to check for available temperature readings. 
-For this, it iterates available _chips_ and their _features_, looking for the  
-chip and feature name given via `-c` and `-f` respectively. All features that 
-match (using `strstr()`) the given names will be read for their temperature,  
-those values added up and, at the end, divided by the number of features used.  
+For this, it iterates available _chips_ and their _features_, looking for 
+the chip and feature names given via `-c` and `-f` respectively. Temperature 
+values will be read for all features that match the given feature name, using 
+`strstr()` (substring search). The temperature values found this way will be 
+added up and, at the end, divided by the number of temperature values found. 
 Only the first chip that matches the given name will be taken into account.  
-If a reading could be obtained, it is printed to `stdout` (including a newline), 
+If a reading was obtained, it is printed to `stdout`, including a newline,
 otherwise `temps` does nothing.
 
 ## Dependencies
