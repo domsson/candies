@@ -2,12 +2,7 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr()
-#include <float.h>            // DBL_MAX
 #include <sensors/sensors.h>
-
-// This will not work on a Raspberry Pi, but if we find a way to check
-// if we are on a Pi, we could go another route for it:
-// https://www.raspberrypi.org/forums/viewtopic.php?t=208548
 
 /**
  * Goes through the list of chips and looks for the one with the given prefix.
@@ -127,6 +122,9 @@ void list_chips_and_features(int precision, int unit)
 	}
 }
 
+/**
+ * Prints the provided temperature value to stdout.
+ */
 void print_temp(double temp, int precision, int unit)
 {
 	fprintf(stdout, "%.*f%s\n", temp, precision, unit ? " °C" : "");
