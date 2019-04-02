@@ -35,3 +35,7 @@ otherwise `temps` does nothing.
 - `-c` lets you specify part of the chip prefix from which to gather the temperatures, for example `coretemp`
 - `-f` lets you specify part of the feature label to get the temperature from, for example `Package`
 
+## To do
+
+- Add `-u` option (if given, print the temperature unit)
+- Add `-m` option (keep running, print whenever temperature change detected)
