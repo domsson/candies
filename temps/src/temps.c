@@ -287,6 +287,7 @@ int main(int argc, char **argv)
 	}
 
 	// Print the summed temperature value divided by the number of values
+	setbuf(stdout, NULL);
 	print_temp(temp / count, precision, unit);
 
 	// Cleanup
