@@ -24,7 +24,7 @@ For the sake of consistency, all _candies_ should follow these design principles
 
 ## Candies with monitoring capabilities
 
-_Live blocks_, or monitoring candies refers to the option to have the program keep running and print their result over and over again, whenever they detect a change in the value. If a block offers this option, it should be made available with the `-m` command line switch.
+_Live blocks_, or monitoring candies, refers to the option to have the program keep running and print their result over and over again, whenever they detect a change in the value. If a block offers this option, it should be made available with the `-m` command line switch.
 
 An example would be a CPU temperature program that prints the current temperature once when initially run, then prints it again whenever the temperature changes. Each print should be terminated with a line break (`\n`).
 
