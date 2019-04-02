@@ -28,7 +28,7 @@ otherwise `temps` does nothing.
 
 ## Usage
 
-    temps [-v] [-c <chip_prefix>] [-f <feature_label>]
+    temps [-l] [-v] [-c <chip_prefix>] [-f <feature_label>]
 
 - `-l` list all available chips that can be queried, then exit
 - `-v` enables verbose mode that prints additional information to `stderr`
