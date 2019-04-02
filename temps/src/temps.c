@@ -216,7 +216,7 @@ int main(int argc, char **argv)
 	// Find the chip that matches the provided chip name
 	sensors_chip_name const *cm = find_chip(chip);
 
-	// Abort if we didn't find any chips
+	// Abort if we didn't find any matching chips
 	if (cm == NULL)
 	{
 		return EXIT_FAILURE;
