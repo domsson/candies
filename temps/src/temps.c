@@ -201,12 +201,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (chip == NULL || feat == NULL)
-	{
-		help(argv[0]);
-		return EXIT_SUCCESS;
-	}
-
 	// Init sensors library
 	if (sensors_init(NULL) != 0)
 	{
@@ -218,6 +212,13 @@ int main(int argc, char **argv)
 	if (list)
 	{
 		list_chips_and_features(precision, unit);
+		return EXIT_SUCCESS;
+	}
+
+	// Chip and/or feature not given? Print help and exit
+	if (chip == NULL || feat == NULL)
+	{
+		help(argv[0]);
 		return EXIT_SUCCESS;
 	}
 
