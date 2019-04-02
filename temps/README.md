@@ -27,7 +27,8 @@ otherwise `temps` does nothing.
 
     temps [-v] [-c <chip_prefix>] [-f <feature_label>]
 
-- `-v` enables verbose mode that prints addiitonal information to `stderr`
+- `-l` list all available chips that can be queried, then exit
+- `-v` enables verbose mode that prints additional information to `stderr`
 - `-c` lets you specify part of the chip prefix from which to gather the temperatures, for example `coretemp`
 - `-f` lets you specify part of the feature label to get the temperature from, for example `Package`
 
