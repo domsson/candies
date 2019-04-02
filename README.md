@@ -8,7 +8,7 @@ Personally, I use these for [`succade`](https://github.com/domsson/succade), a L
 
 Check out the subdirectories for more information on each individual _block_ (aka _candy_).
 
-# Concept
+## Concept
 
 For the sake of consistency, all _candies_ should follow these design principles:
 
@@ -21,6 +21,6 @@ For the sake of consistency, all _candies_ should follow these design principles
 - Enable printing of units, if applicable, with a `-u` argument
 - Only print other output when requested by user via arguments
 
-# License
+## License
 
 This is all public domain, go bonkers, have fun.
