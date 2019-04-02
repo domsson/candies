@@ -13,6 +13,7 @@ Check out the subdirectories for more information on each individual _block_ (ak
 For the sake of consistency, all _candies_ should follow these design principles:
 
 - Simple program/script that returns as soon as possible
+- If possible, compiled native binary or shell script
 - Disable `stdout` buffering before printing the result
 - On success, print the result and a line break to `stdout`
 - On error, print nothing, just return with `EXIT_FAILURE`
