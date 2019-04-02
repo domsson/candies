@@ -130,7 +130,6 @@ void print_temp(double temp, int precision, int unit)
 	fprintf(stdout, "%.*f%s\n", temp, precision, unit ? " °C" : "");
 }
 
-
 /**
  * Prints usage information.
  */
@@ -147,9 +146,11 @@ void help(char *invocation)
 	fprintf(stderr, "\t-v Print additional information, similar to -l.\n");
 }
 
-// Sources:
-// - manpage for libsensors
-// - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
+/**
+ * Sources:
+ * - manpage for libsensors
+ * - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
+ */
 int main(int argc, char **argv)
 {
 	int list = 0;		// list chips and features
@@ -201,6 +202,7 @@ int main(int argc, char **argv)
 	if (list)
 	{
 		list_chips_and_features(precision, unit);
+		sensors_cleanup();
 		return EXIT_SUCCESS;
 	}
 
@@ -208,6 +210,7 @@ int main(int argc, char **argv)
 	if (chip == NULL || feat == NULL)
 	{
 		help(argv[0]);
+		sensors_cleanup();
 		return EXIT_SUCCESS;
 	}
 
@@ -217,6 +220,7 @@ int main(int argc, char **argv)
 	// Abort if we didn't find any matching chips
 	if (cm == NULL)
 	{
+		sensors_cleanup();
 		return EXIT_FAILURE;
 	}
 	
@@ -278,6 +282,7 @@ int main(int argc, char **argv)
 	// We didn't manage to find a temp value
 	if (count <= 0)
 	{
+		sensors_cleanup();
 		return EXIT_FAILURE;
 	}
 
