@@ -35,6 +35,8 @@ otherwise `temps` does nothing.
 - `-c` lets you specify part of the chip prefix from which to gather the temperatures, for example `coretemp`
 - `-f` lets you specify part of the feature label to get the temperature from, for example `Package`
 
+Note that `-c` and `-f` currently use `strstr()` internally, which means the given string will be searched for in the actual chip/feature name. In other words, `-c core` will match `coretemp`, as `core` is a substring of `coretemp`.
+
 ## To do
 
 - Add `-u` option (if given, print the temperature unit)
