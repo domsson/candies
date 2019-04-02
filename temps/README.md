@@ -1,7 +1,10 @@
 # temps block
 
-This is a small utility that will try to print the current CPU tempreature to `stdout`.
+This is a small utility that will try to print current system tempreatures to `stdout`.  
 It is intended to be used with status bars like `Lemonbar` and/or their wrappers, like `succade`.
+
+I'm using it to print CPU temperature, which is the common use-case, but I believe the tool 
+would also be able to query other temperature sensors (_chips_), if available. See usage.
 
 ## Concept 
 
