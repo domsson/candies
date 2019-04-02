@@ -75,121 +75,17 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
 
 		return 0;
 	}
-
 }
 
 /**
- * Prints all detected chips to stdout.
+ * List all temperature features of the provided chip, including their readings.
+ * Temperature readings will be formatted according to precision and unit.
  */
-void list_chips()
+void list_features(sensors_chip_name const *cm, int precision, int unit)
 {
-	// Iterate over the chips
-	sensors_chip_name const *cc = NULL; // current chip
-	int c = 0;
-
-	while(cc = sensors_get_detected_chips(NULL, &c))
-	{
-		fprintf(stdout, "%s\n", cc->prefix);
-	}
-}
-
-/**
- * Prints usage information.
- */
-void help(char *invocation)
-{
-	fprintf(stderr, "Usage:   %s [-v] [-c <chip_prefix>] [-f <feature_label>]\n", invocation);
-	fprintf(stderr, "Example: %s -c coretemp -f Package\n", invocation);
-}
-
-// Sources:
-// - manpage for libsensors
-// - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
-int main(int argc, char **argv)
-{
-	int list = 0;
-	char *chip = NULL;
-	char *feat = NULL;
-	int verbatim = 0;
-
-	// Get arguments, if any
-	opterr = 0;
-	int o;
-	while ((o = getopt (argc, argv, "c:f:vlh")) != -1)
-	{
-		switch (o)
-		{
-			case 'c':
-				chip = optarg;
-				break;
-			case 'f':
-				feat = optarg;
-				break;
-			case 'v':
-				verbatim = 1;
-				break;
-			case 'l':
-				list = 1;
-				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
-		}
-	}
-
-	// Init sensors library
-	if (sensors_init(NULL) != 0)
-	{
-		// Error initializing sensors
-		return EXIT_FAILURE;
-	}
-
-	// List chips and exit (if that's what we're supposed to do)
-	if (list)
-	{
-		list_chips();
-		return EXIT_SUCCESS;
-	}
-
-	// Find the chip 'chip' or just the first one we encounter
-	sensors_chip_name const *cm = find_chip(chip);
-	
-	if (verbatim)
-	{
-		fprintf(stderr, "Chip source: %s from %s\n", cm->prefix, cm->path);
-	}
-
-	// Abort if we didn't find any chips
-	if (cm == NULL)
-	{
-		return EXIT_FAILURE;
-	}
-	
-	// https://www.kernel.org/doc/Documentation/hwmon/coretemp
-	// For Intel, Feature labels will be either "Core 0", "Core 1" etc
-	// or either "Package id n" (n = some number) or "Physical id n"
-	
-	// According to some SO post, "package" temp is the temperature of the
-	// CPU socket itself, which is usually higher than that of the cores 
-	// because the socket, in contrast to the CPU, is not directly cooled.
-	// Hence, the average core temperatures are probably more relevant 
-	// than the package temperature.
-
-	// If we find the user-specified feature, we use that. If not, we sum
-	// up all the Core temps and return the average. If we can't find any,
-	// we use the package temperature, if we managed to find that. In case
-	// we can't find any of the above, we use the temperature reading of 
-	// the first feature we came across. If we coulnd't find any of the 
-	// above, we will finally give up and EXIT_FAILURE without printing.
-	
 	// Iterate over the features
 	sensors_feature const *fc = NULL; // current feature
 	int f = 0;
-
-	double feature_temp = DBL_MAX; // temperature of user-specified feature
-	double package_temp = DBL_MAX; // temperature of package, if found
-	double core_temps   = 0.0;     // avg. temp of all cores, if any found
-	size_t num_cores    = 0;       // number of core temps found
 
 	while (fc = sensors_get_features(cm, &f))
 	{
@@ -206,61 +102,202 @@ int main(int argc, char **argv)
 			// Error getting the label
 			continue;
 		}
-		
-		// Check if this is the feature the user is interested in
+
+		// Get the feature's value and print
+		double temp;
+		if (get_temp_value(cm, fc, &temp) == 0)
+		{
+			fprintf(stdout, " '-[%d] %s (%.*f%s)\n", f, fl, 
+					precision, temp, unit ? " °C" : "");
+		}
+		else
+		{
+			fprintf(stdout, " '-[%d] %s (n/a)", f, fl); 
+		}
+
+		free(fl);
+		fl = NULL;
+	}
+}
+
+/**
+ * Prints all detected chips and their features to stdout.
+ */
+void list_chips_and_features(int precision, int unit)
+{
+	// Iterate over the chips
+	sensors_chip_name const *cc = NULL; // current chip
+	int c = 0;
+
+	while(cc = sensors_get_detected_chips(NULL, &c))
+	{
+		fprintf(stdout, "[%d] %s\n", c, cc->prefix);
+		list_features(cc, precision, unit);
+	}
+}
+
+void print_temp(double temp, int precision, int unit)
+{
+	fprintf(stdout, "%.*f%s\n", temp, precision, unit ? " °C" : "");
+}
+
+
+/**
+ * Prints usage information.
+ */
+void help(char *invocation)
+{
+	fprintf(stderr, "Usage:\n");
+     	fprintf(stderr, "\t%s [OPTION...] -c CHIP -f FEATURE\n", invocation);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "\t-h Print this help text and exit.\n");
+	fprintf(stderr, "\t-l List all chips and features, then exit.\n");
+	fprintf(stderr, "\t-m Keep running and print the temperature whenever it changes.\n");
+	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
+	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
+	fprintf(stderr, "\t-v Print additional information, similar to -l.\n");
+}
+
+// Sources:
+// - manpage for libsensors
+// - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
+int main(int argc, char **argv)
+{
+	int list = 0;		// list chips and features
+	int unit = 0;		// also print the °C unit
+	int precision = 0;      // decimal places in output
+	int verbose = 0;	// print additional info
+	int monitor = 0;	// keep running (monitor)
+	char *chip = NULL;	// chip prefix to look for
+	char *feat = NULL;	// feature label to look for
+
+	// Get arguments, if any
+	opterr = 0;
+	int o;
+	while ((o = getopt (argc, argv, "c:f:p:umvlh")) != -1)
+	{
+		switch (o)
+		{
+			case 'c':
+				chip = optarg;
+				break;
+			case 'f':
+				feat = optarg;
+				break;
+			case 'p':
+				precision = atoi(optarg);
+				break;
+			case 'u':
+				unit = 1;
+				break;
+			case 'm':
+				monitor = 1;	
+				break;
+			case 'v':
+				verbose = 1;
+				break;
+			case 'l':
+				list = 1;
+				break;
+			case 'h':
+				help(argv[0]);
+				return EXIT_SUCCESS;
+		}
+	}
+
+	if (chip == NULL || feat == NULL)
+	{
+		help(argv[0]);
+		return EXIT_SUCCESS;
+	}
+
+	// Init sensors library
+	if (sensors_init(NULL) != 0)
+	{
+		// Error initializing sensors
+		return EXIT_FAILURE;
+	}
+
+	// List chips and exit (if that's what we're supposed to do)
+	if (list)
+	{
+		list_chips_and_features(precision, unit);
+		return EXIT_SUCCESS;
+	}
+
+	// Find the chip 'chip' or just the first one we encounter
+	sensors_chip_name const *cm = find_chip(chip);
+
+	if (verbose)
+	{
+		fprintf(stderr, "Chip: %s from %s\n", cm->prefix, cm->path);
+	}
+
+	// Abort if we didn't find any chips
+	if (cm == NULL)
+	{
+		return EXIT_FAILURE;
+	}
+	
+	// Iterate over the features
+	sensors_feature const *fc = NULL; // current feature
+	int f = 0;
+
+	double temp = 0.0;
+	size_t count = 0;
+
+	while (fc = sensors_get_features(cm, &f))
+	{
+		// Not a temperature? Not interested!
+		if (fc->type != SENSORS_FEATURE_TEMP)
+		{
+			continue;
+		}
+
+		// Get the feature's label
+		char *fl = sensors_get_label(cm, fc);
+		if (fl == NULL)
+		{
+			// Error getting the label
+			continue;
+		}
+
+		// Check if this is a feature the user is interested in
 		if (feat && strstr(fl, feat) != NULL)
 		{
-			get_temp_value(cm, fc, &feature_temp);
-		}
+			// If so, we get the temperature and add it
+			double curr = 0.0;
+			int ret = get_temp_value(cm, fc, &curr);
 
-		// Check if this is the package temperature (intel)
-		if (strstr(fl, "Package") != NULL || strstr(fl, "Physical") != NULL)
-		{
-			get_temp_value(cm, fc, &package_temp);
-		}
+			if (get_temp_value(cm, fc, &curr) != 0)
+			{
+				continue;
+			}
 
-		// Check if this is a core temperature (intel)
-		if (strstr(fl, "Core") != NULL)
-		{
-			double ct = 0.0;
-			get_temp_value(cm, fc, &ct);
-			core_temps += ct;
-			++num_cores;
+			temp += curr;
+			++count;
+				
+			if (verbose)
+			{
+				fprintf(stderr, " '- Feature: %s (%.*f%s)\n", 
+							fl, precision, curr, 
+							unit ? " °C" : "");
+			}
 		}
 
 		free(fl);
 		fl = NULL;
 	}
 
-	// We found the requested temperature, print that!
-	if (feature_temp != DBL_MAX)
+	// We didn't manage to find a temp value
+	if (count <= 0)
 	{
-		if (verbatim)
-		{
-			fprintf(stderr, "Temp source: specified feature\n");
-		}
-		fprintf(stdout, "%.0f\n", feature_temp);
+		return EXIT_FAILURE;
 	}
 
-	// We were able to gather core temps, print their average!
-	else if (num_cores > 0)
-	{
-		if (verbatim)
-		{
-			fprintf(stderr, "Temp source: core average\n");
-		}
-		fprintf(stdout, "%.0f\n", core_temps / num_cores);
-	}
-
-	// We were able to find a package temperature, print that!
-	else if (package_temp != DBL_MAX)
-	{
-		if (verbatim)
-		{
-			fprintf(stderr, "Temp source: package\n");
-		}
-		fprintf(stdout, "%.0f\n", package_temp);
-	}
+	// Print the summed temperature value divided by the number of values
+	print_temp(temp / count, precision, unit);
 
 	// Cleanup
 	sensors_cleanup();
