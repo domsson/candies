@@ -15,7 +15,7 @@ the chip and feature names given via `-c` and `-f` respectively. Temperature
 values will be read for all features that match the given feature name, using 
 `strstr()` (substring search). The temperature values found this way will be 
 added up and, at the end, divided by the number of temperature values found. 
-Only the first chip that matches the given name will be taken into account.  
+Only the first chip that matches the given name will be taken into account. 
 If a reading was obtained, it is printed to `stdout`, including a newline,
 otherwise `temps` does nothing.
 
