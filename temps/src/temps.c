@@ -153,7 +153,6 @@ void help(char *invocation)
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
 	fprintf(stderr, "\t-l List all chips and features, then exit.\n");
-	fprintf(stderr, "\t-m Keep running and print the temperature whenever it changes.\n");
 	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
 	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
 	fprintf(stderr, "\t-v Print additional information, similar to -l.\n");
@@ -168,14 +167,13 @@ int main(int argc, char **argv)
 	int unit = 0;		// also print the °C unit
 	int precision = 0;      // decimal places in output
 	int verbose = 0;	// print additional info
-	int monitor = 0;	// keep running (monitor)
 	char *chip = NULL;	// chip prefix to look for
 	char *feat = NULL;	// feature label to look for
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt (argc, argv, "c:f:p:umvlh")) != -1)
+	while ((o = getopt (argc, argv, "c:f:p:uvlh")) != -1)
 	{
 		switch (o)
 		{
@@ -190,9 +188,6 @@ int main(int argc, char **argv)
 				break;
 			case 'u':
 				unit = 1;
-				break;
-			case 'm':
-				monitor = 1;	
 				break;
 			case 'v':
 				verbose = 1;
