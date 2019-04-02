@@ -10,7 +10,7 @@ Check out the subdirectories for more information on each individual _block_ (ak
 
 # Concept
 
-The concept / requirements for each _candy_ can be summarized as follows:
+For the sake of consistency, all _candies_ should follow these design principles:
 
 - Simple program/script that returns as soon as possible
 - Disable `stdout` buffering before printing the result
