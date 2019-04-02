@@ -23,4 +23,4 @@ For the sake of consistency, all _candies_ should follow these design principles
 
 ## License
 
-This is all public domain, go bonkers, have fun.
+This is all public domain, go bonkers, have fun. Or don't, I'm not your boss.
