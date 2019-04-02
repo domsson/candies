@@ -15,7 +15,7 @@ For the sake of consistency, all _candies_ should follow these design principles
 - Simple program/script that returns as soon as possible
 - Disable `stdout` buffering before printing the result
 - On success, print the result and a line break to `stdout`
-- On error, print absolute nothing, just return EXIT_FAILURE
+- On error, print nothing, just return with `EXIT_FAILURE`
 - By default, omit units (`%`, `°C`, etc) in the output
 - Enable printing of units, if applicable, with a `-u` argument
 - Only print other output when requested by user via arguments
