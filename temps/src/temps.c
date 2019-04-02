@@ -11,32 +11,23 @@
 
 /**
  * Goes through the list of chips and looks for the one with the given prefix.
- * If the specified chip is found, it will be returned, otherwise the first one
- * found will be returned. If no chip is found, NULL will be returned.
+ * Returns the specified chip if found, otherwise NULL.
  */
 sensors_chip_name const *find_chip(const char *prefix)
 {
-	// Iterate over the chips
-	sensors_chip_name const *cc = NULL; // current chip
 	sensors_chip_name const *cm = NULL; // matched chip
 	int c = 0;
 
-	while(cc = sensors_get_detected_chips(NULL, &c))
+	// Iterate over the chips
+	while(cm = sensors_get_detected_chips(NULL, &c))
 	{
-		// Remember the first chip we find
-		if (cm == NULL)
-		{
-			cm = cc;
-		}
-
 		// Check if this is the chip the user is interested in
-		if (prefix && strstr(cc->prefix, prefix) != NULL)
+		if (prefix && strstr(cm->prefix, prefix) != NULL)
 		{
-			cm = cc;
-			break;
+			return cm;
 		}
 	}
-	return cm;
+	return NULL;
 }
 
 /**
@@ -222,13 +213,8 @@ int main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
-	// Find the chip 'chip' or just the first one we encounter
+	// Find the chip that matches the provided chip name
 	sensors_chip_name const *cm = find_chip(chip);
-
-	if (verbose)
-	{
-		fprintf(stderr, "Chip: %s from %s\n", cm->prefix, cm->path);
-	}
 
 	// Abort if we didn't find any chips
 	if (cm == NULL)
@@ -236,6 +222,11 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
+	if (verbose)
+	{
+		fprintf(stderr, "Chip: %s from %s\n", cm->prefix, cm->path);
+	}
+
 	// Iterate over the features
 	sensors_feature const *fc = NULL; // current feature
 	int f = 0;
