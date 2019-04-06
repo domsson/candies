@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt (argc, argv, "c:f:p:unvlh")) != -1)
+	while ((o = getopt(argc, argv, "c:f:p:unvlh")) != -1)
 	{
 		switch (o)
 		{
