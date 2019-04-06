@@ -125,9 +125,11 @@ void list_chips_and_features(int precision, int unit)
 /**
  * Prints the provided temperature value to stdout.
  */
-void print_temp(double temp, int precision, int unit)
+void print_temp(double temp, int precision, int unit, int space)
 {
-	fprintf(stdout, "%.*f%s\n", temp, precision, unit ? " °C" : "");
+	fprintf(stdout, "%.*f%s%s\n", precision, temp, 
+			space && unit ? " " : "",
+			unit ? "°C" : "");
 }
 
 /**
@@ -142,6 +144,7 @@ void help(char *invocation)
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
 	fprintf(stderr, "\t-l List all chips and features, then exit.\n");
 	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
+	fprintf(stderr, "\t-n Don't print a space between value and unit.\n");
 	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
 	fprintf(stderr, "\t-v Print additional information, similar to -l.\n");
 }
@@ -155,6 +158,7 @@ int main(int argc, char **argv)
 {
 	int list = 0;		// list chips and features
 	int unit = 0;		// also print the °C unit
+	int space = 1;          // space between val and unit
 	int precision = 0;      // decimal places in output
 	int verbose = 0;	// print additional info
 	char *chip = NULL;	// chip prefix to look for
@@ -163,7 +167,7 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt (argc, argv, "c:f:p:uvlh")) != -1)
+	while ((o = getopt (argc, argv, "c:f:p:unvlh")) != -1)
 	{
 		switch (o)
 		{
@@ -178,6 +182,9 @@ int main(int argc, char **argv)
 				break;
 			case 'u':
 				unit = 1;
+				break;
+			case 'n':
+				space = 0;
 				break;
 			case 'v':
 				verbose = 1;
@@ -288,7 +295,7 @@ int main(int argc, char **argv)
 
 	// Print the summed temperature value divided by the number of values
 	setbuf(stdout, NULL);
-	print_temp(temp / count, precision, unit);
+	print_temp(temp / count, precision, unit, space);
 
 	// Cleanup
 	sensors_cleanup();
