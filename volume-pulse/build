@@ -1,1 +1,1 @@
-gcc -g -O0 -o bin/volume-pulse src/volume-pulse.c -lpulse
+gcc -g -o bin/volume-pulse src/volume-pulse.c -lpulse

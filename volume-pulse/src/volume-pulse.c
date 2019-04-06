@@ -8,6 +8,7 @@ struct candy_cfg {
 	pa_mainloop *mlp;
 	pa_mainloop_api *api;
 
+	int monitor : 1;
 	int space : 1;
 	int unit : 1;
 	int precision;
@@ -53,21 +54,23 @@ void cb_sink_info(pa_context *c, const pa_sink_info *i, int eol, void *data)
 	{
 		// Print the user-provided 'muted' string
 		fprintf(stdout, "%s\n", cfg->muted);
-
-		// We're done, let's quite main loop
-		pa_mainloop_quit(cfg->mlp, 0);
-		return;
+	}
+	else
+	{
+		// Get the sink volume
+		pa_volume_t vol = pa_cvolume_avg(&i->volume);
+		double percent = vol / (PA_VOLUME_NORM / 100.0);
+	
+		// Finally print the volume
+		print_vol(percent, cfg->precision, cfg->unit, cfg->space); 
 	}
 
-	// Get the sink volume
-	pa_volume_t vol = pa_cvolume_avg(&i->volume);
-	double percent = vol / (PA_VOLUME_NORM / 100.0);
-
-	// Finally print the volume
-	print_vol(percent, cfg->precision, cfg->unit, cfg->space); 
-
-	// We're done, let's quit the main loop
-	pa_mainloop_quit(cfg->mlp, 0);
+	// If in NOT in monitor more (which means we only print once)...
+	if (cfg->monitor == 0)
+	{
+		// We're done, let's quit the main loop
+		pa_mainloop_quit(cfg->mlp, 0);
+	}
 }
 
 /**
@@ -78,6 +81,20 @@ void cb_server_info(pa_context *c, const pa_server_info *i, void *data)
 {
 	// Let's query the default sink's information
 	pa_context_get_sink_info_by_name(c, i->default_sink_name, cb_sink_info, data);
+}
+
+void cb_ctx_success(pa_context *c, int success, void *data)
+{
+	// A context operation was successful. Okay.
+}
+
+void cb_sub_event(pa_context *c, pa_subscription_event_type_t t, uint32_t idx, void *data)
+{
+	if (t == PA_SUBSCRIPTION_EVENT_CHANGE)
+	{
+		// Volume and/or mute state might have changed, query server again
+		pa_context_get_server_info(c, cb_server_info, data);
+	}
 }
 
 /**
@@ -93,7 +110,18 @@ void cb_ctx_status(pa_context *c, void *data)
 	}
 
 	// Let's query the pulse audio server information
+	// This is to actually receive the volume information.
+	// We'll do this whenever the volume changes, but we also
+	// want to do it at least one time on startup - right here!
 	pa_context_get_server_info(c, cb_server_info, data);
+
+	struct candy_cfg *cfg = data;
+	if (cfg->monitor)
+	{
+		// Now let's make sure we receive information about changes
+		pa_context_set_subscribe_callback(c, cb_sub_event, data);
+		pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK, cb_ctx_success, data);
+	}
 }
 
 void cleanup(struct candy_cfg *cfg)
@@ -120,13 +148,16 @@ int main(int argc, char **argv)
 
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "hnp:us:")) != -1)
+	while ((o = getopt(argc, argv, "hmnp:us:")) != -1)
 	{
 		switch(o)
 		{
 			case 'h':
 				help(argv[0]);
 				return EXIT_SUCCESS;
+			case 'm':
+				cfg.monitor = 1;
+				break;
 			case 'n':
 				cfg.space = 0;
 				break;
