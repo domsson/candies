@@ -21,6 +21,19 @@ void print_vol(double vol, int precision, int unit, int space)
 			unit ? "%" : "");
 }
 
+void help(const char *invocation)
+{
+	fprintf(stderr, "Usage:\n");
+	fprintf(stderr, "\t%s [OPTION...]\n", invocation);
+	fprintf(stderr, "\n");
+	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "\t-h Print this help text and exit.\n");
+	fprintf(stderr, "\t-u Include the percent sign in the output.\n");
+	fprintf(stderr, "\t-n Don't print a space between value and percent sign.\n");
+	fprintf(stderr, "\t-s<string> Print this string instead of the volume level when the sink is muted.\n");
+	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
+}
+
 /**
  * Callback for when we receive previously queried sink information.
  * This will actually let us query the queried sink's volume, yay!
@@ -107,10 +120,13 @@ int main(int argc, char **argv)
 
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "np:us:")) != -1)
+	while ((o = getopt(argc, argv, "hnp:us:")) != -1)
 	{
 		switch(o)
 		{
+			case 'h':
+				help(argv[0]);
+				return EXIT_SUCCESS;
 			case 'n':
 				cfg.space = 0;
 				break;
