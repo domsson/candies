@@ -8,13 +8,16 @@ struct candy_cfg {
 	pa_mainloop *mlp;
 	pa_mainloop_api *api;
 
-	int monitor : 1;
-	int space : 1;
-	int unit : 1;
-	int precision;
-	char *muted;
+	int monitor : 1;       // keep running and print on change?
+	int space : 1;         // print space between value and unit?
+	int unit : 1;          // print unit after value? ('%')
+	int precision;         // how many decimal places to print?
+	char *muted;           // string to print when sink is muted
 };
 
+/**
+ * Print the given volume to stdout.
+ */
 void print_vol(double vol, int precision, int unit, int space)
 {
 	fprintf(stdout, "%.*f%s%s\n", precision, vol,
@@ -22,6 +25,9 @@ void print_vol(double vol, int precision, int unit, int space)
 			unit ? "%" : "");
 }
 
+/**
+ * Prints usage information to stderr.
+ */
 void help(const char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
@@ -29,10 +35,11 @@ void help(const char *invocation)
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-u Include the percent sign in the output.\n");
-	fprintf(stderr, "\t-n Don't print a space between value and percent sign.\n");
-	fprintf(stderr, "\t-s<string> Print this string instead of the volume level when the sink is muted.\n");
+	fprintf(stderr, "\t-m Enables monitor mode, where the volume is printed every time it changes.\n");
 	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
+	fprintf(stderr, "\t-s Print a space between value and percent sign.\n");
+	fprintf(stderr, "\t-u Include the percent sign in the output.\n");
+	fprintf(stderr, "\t-w<string> Print this string instead of the volume level when the sink is muted.\n");
 }
 
 /**
@@ -65,7 +72,7 @@ void cb_sink_info(pa_context *c, const pa_sink_info *i, int eol, void *data)
 		print_vol(percent, cfg->precision, cfg->unit, cfg->space); 
 	}
 
-	// If in NOT in monitor more (which means we only print once)...
+	// If in NOT in monitor mode (which means we only print once)...
 	if (cfg->monitor == 0)
 	{
 		// We're done, let's quit the main loop
@@ -80,20 +87,31 @@ void cb_sink_info(pa_context *c, const pa_sink_info *i, int eol, void *data)
 void cb_server_info(pa_context *c, const pa_server_info *i, void *data)
 {
 	// Let's query the default sink's information
-	pa_context_get_sink_info_by_name(c, i->default_sink_name, cb_sink_info, data);
+	pa_operation *o = NULL;
+	o = pa_context_get_sink_info_by_name(c, i->default_sink_name, cb_sink_info, data);
+	pa_operation_unref(o);
 }
 
+/**
+ * Callback for when a context operation was successfull.
+ */
 void cb_ctx_success(pa_context *c, int success, void *data)
 {
-	// A context operation was successful. Okay.
+	// Do nothing. This is just to please libpulse.
 }
 
+/**
+ * Callback for when a subscribed event has occured. In our case, that's
+ * a change regarding the default sink, for example volume or mute state.
+ */
 void cb_sub_event(pa_context *c, pa_subscription_event_type_t t, uint32_t idx, void *data)
 {
 	if (t == PA_SUBSCRIPTION_EVENT_CHANGE)
 	{
 		// Volume and/or mute state might have changed, query server again
-		pa_context_get_server_info(c, cb_server_info, data);
+		pa_operation *o = NULL;
+		o = pa_context_get_server_info(c, cb_server_info, data);
+		pa_operation_unref(o);
 	}
 }
 
@@ -109,29 +127,34 @@ void cb_ctx_status(pa_context *c, void *data)
 		return;
 	}
 
-	// Let's query the pulse audio server information
-	// This is to actually receive the volume information.
-	// We'll do this whenever the volume changes, but we also
-	// want to do it at least one time on startup - right here!
-	pa_context_get_server_info(c, cb_server_info, data);
+	// Ask for information about the PulseAudio server. This will enable us 
+	// to get the name/index of the default sink, which is hopefully the audio 
+	// device in use. From there, we can then actually query the volume level.
+	// We'll do this whenever the volume changes, but we also want to do it at 
+	// least once on startup - right here!
+	pa_operation *o = NULL;
+	o = pa_context_get_server_info(c, cb_server_info, data);
+	pa_operation_unref(o);
+	o = NULL;
 
 	struct candy_cfg *cfg = data;
 	if (cfg->monitor)
 	{
 		// Now let's make sure we receive information about changes
 		pa_context_set_subscribe_callback(c, cb_sub_event, data);
-		pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK, cb_ctx_success, data);
+		o = pa_context_subscribe(c, PA_SUBSCRIPTION_MASK_SINK, cb_ctx_success, data);
+		pa_operation_unref(o);
 	}
 }
 
+/**
+ * Should be called on exit to free resources.
+ */
 void cleanup(struct candy_cfg *cfg)
 {
 	if (cfg->ctx != NULL)
 	{
 		pa_context_disconnect(cfg->ctx);
-		// TODO I'm not exactly sure what the next line does
-		// and if I should use it, but without it, we are leaking
-		// more memory according to valgrind... so...
 		pa_context_unref(cfg->ctx);
 	}
 	if (cfg->mlp != NULL)
@@ -142,13 +165,11 @@ void cleanup(struct candy_cfg *cfg)
 
 int main(int argc, char **argv)
 {
-	// Command line argument helpers
 	struct candy_cfg cfg = { 0 };
-	cfg.space = 1;
 
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "hmnp:us:")) != -1)
+	while ((o = getopt(argc, argv, "hmnp:suw:")) != -1)
 	{
 		switch(o)
 		{
@@ -159,15 +180,18 @@ int main(int argc, char **argv)
 				cfg.monitor = 1;
 				break;
 			case 'n':
-				cfg.space = 0;
+				cfg.space = 1;
 				break;
 			case 'p':
 				cfg.precision = atoi(optarg);
 				break;
+			case 's':
+				cfg.space = 1;
+				break;
 			case 'u':
 				cfg.unit = 1;
 				break;
-			case 's':
+			case 'w':
 				cfg.muted = optarg;
 				break;
 		}
