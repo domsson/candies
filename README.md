@@ -19,7 +19,7 @@ For the sake of consistency, all _candies_ should follow these design principles
 - On error, print nothing, just return with `EXIT_FAILURE`
 - By default, omit units (`%`, `°C`, etc) in the output
 - Enable printing of units, if applicable, with a `-u` argument
-- Omit space between value and unit if `-n` (`nospace`) is given
+- Omit the space between value and unit unless `-s` (space) is given
 - Only print other output when requested by user via arguments
 - Candies that can monitor should enable this feature with `-m` (see below)
 
