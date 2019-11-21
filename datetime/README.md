@@ -1,6 +1,6 @@
 # datetime 
 
-This is a small utility that prints the current date and/or time `stdout`. 
+This is a small utility that prints the current date and/or time to `stdout`. 
 It is intended to be used with status bars like `Lemonbar` and/or their 
 wrappers, like [`succade`](https://github.com/domsson/succade).
 
@@ -27,11 +27,6 @@ None.
 - `-g` use UTC/GMT instead of local time
 - `-m` keep running, printing every seconds (or every INTERVAL seconds)
 
-For possible `FORMAT` strings, check the manpage for `date` or `strftime`.
-
-`INTERVAL` can be used to specify every how many seconds the date/time string 
-is to be printed to `stdout`. If you don't plan on displaying seconds in your 
-output, it would be wise to set this to `60`, in order to not waste resources.
-
-If `OFFSET` is given, it will be treated as hours and added to the time 
-obtained from the system (local or UTC, depending on the options).
+- `FORMAT` defines the output string, see the manpage for `date` or `strftime`
+- `INTERVAL` (seconds) specifies how often to print to `stdout`
+- `OFFSET` (hours) will be added to the time obtained from the system
