@@ -4,17 +4,26 @@
 #include <string.h>           // strstr()
 #include <time.h>             // nanosleep()
 
-#define PROC_FILE "/proc/stat"
-#define PROC_BUF  128
+#define PROC_BUF 128
 
+#define DEFAULT_UNIT    "%"
 #define DEFAULT_INTERVAL 1
+#define DEFAULT_PROCFILE "/proc/stat"
 
+/*
+ * Opens and reads the first line from the given file, which is assumed to have 
+ * the format of /proc/stat and returns the total CPU time, plus the idle time
+ * in `total` and `idle`. These times are total times accumulated since system 
+ * boot; you would want to take at least one more measurement, then calculate 
+ * the difference between them to get meaningful information regarding current 
+ * CPU usage. Returns 0 on success, -1 on error (couldn't open file for read).
+ */
 int read_cpu_stats(const char *file, char *buf, size_t len, long *total, long *idle)
 {
 	FILE *fp = fopen(file, "r");
 	if (fp == NULL)
 	{
-		return 0;
+		return -1;
 	}
 
 	fgets(buf, len, fp);
@@ -37,38 +46,58 @@ int read_cpu_stats(const char *file, char *buf, size_t len, long *total, long *i
 	}
 
 	fclose(fp);
-	return 1;
+	return 0;
 }
 
-double calc_usage(long total, long idle)
+/*
+ * Turns delta times for total and idle CPU time into a percentage value that
+ * represents the CPU usage for the timespan indirectly given by the delta that 
+ * was used to calculate the given values.
+ */
+double calc_usage(long delta_total, long delta_idle)
 {
-	return (1 - ((double) idle / (double) total)) * 100;
+	return (1 - ((double) delta_idle / (double) delta_total)) * 100;
 }
 
-double determine_usage(int interval, size_t buf_len)
+/*
+ * Calculates an approximation of the current CPU usage by reading CPU time 
+ * statistics from the provided proc stat file up to two times. If `total` 
+ * and `idle` CPU times from a previous read are provided, the file will only 
+ * be read once. If both values are 0, the file will be read twice. Between the 
+ * two reads (or before the single read), a wait() of `interval` seconds will 
+ * be performed. The length of the interval influences the significance of the 
+ * returned CPU usage: shorter times make for a more 'current' usage, but will 
+ * reduce the validity of the value and vice versa. 
+ */
+double determine_usage(const char *file, size_t buf_len, int interval, long *total, long *idle)
 {
 	char cpu_stats[buf_len];
 
-	long total_1 = 0;
-	long idle_1  = 0;
+	long new_total = 0;
+	long new_idle  = 0;
 
-	long total_2 = 0;
-	long idle_2  = 0;
-
-	read_cpu_stats(PROC_FILE, cpu_stats, buf_len, &total_1, &idle_1);
+	if (*total == 0 && *idle == 0)
+	{
+		read_cpu_stats(file, cpu_stats, buf_len, total, idle);
+	}
 
 	sleep(interval);
 	
-	read_cpu_stats(PROC_FILE, cpu_stats, buf_len, &total_2, &idle_2);
+	read_cpu_stats(file, cpu_stats, buf_len, &new_total, &new_idle);
 
-	return calc_usage(total_2 - total_1, idle_2 - idle_1); 
+	long delta_total = new_total - *total;
+	long delta_idle  = new_idle  - *idle;
+
+	*total = new_total;
+	*idle  = new_idle;
+
+	return calc_usage(delta_total, delta_idle); 
 }
 
-void print_usage(double usage, int precision, int unit, int space)
+void print_usage(double usage, int precision, const char *unit, int space)
 {
 	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
-			space && unit ? " " : "",
-			unit ? "%" : "");
+			space && strlen(unit) ? " " : "", unit);
 }
 
 /**
@@ -77,10 +106,13 @@ void print_usage(double usage, int precision, int unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] -c CHIP -f FEATURE\n", invocation);
+     	fprintf(stderr, "\t%s [OPTION...] [-f PROCFILE] [-i INTERVAL] [-p PRECISION]\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
+	fprintf(stderr, "\t-m Keep running and printing every second (or INTERVAL seconds).\n"); 
+	fprintf(stderr, "\t-u Print a percentage sign after the CPu usage value.\n");
+	fprintf(stderr, "\t-s Print a space between CPU usage and percentage sign.\n");
 }
 
 int main(int argc, char **argv)
@@ -90,16 +122,20 @@ int main(int argc, char **argv)
 	int unit = 0;		// also print the % unit
 	int space = 0;          // space between val and unit
 	int precision = 0;      // decimal places in output
+	char *file = NULL;      // file to read CPU stats from
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "mi:p:ush")) != -1)
+	while ((o = getopt(argc, argv, "mf:i:p:ush")) != -1)
 	{
 		switch (o)
 		{
 			case 'm':
 				monitor = 1;
+				break;
+			case 'f':
+				file = optarg;
 				break;
 			case 'i':
 				interval = atoi(optarg);
@@ -119,28 +155,29 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (file == NULL)
+	{
+		file = DEFAULT_PROCFILE;
+	}
+
 	if (interval == 0)
 	{
 		interval = DEFAULT_INTERVAL;
 	}
+	
+	// Disable stdout buffering
+	setbuf(stdout, NULL);
 
-	if (monitor)
+	long total   = 0;
+	long idle    = 0;
+	double usage = 0;
+
+	do
 	{
-		while(monitor)
-		{
-			// TODO: instead of fetching two measurements every time
-			//       we run determine_usage(), we should be able to 
-			//       pass in the previous results, so the function 
-			//       has to only open and read from /proc/stat once!
-			double usage = determine_usage(interval, PROC_BUF);
-			print_usage(usage, precision, unit, space);
-		}
+		usage = determine_usage(file, PROC_BUF, interval, &total, &idle);
+		print_usage(usage, precision, unit ? DEFAULT_UNIT : "", space);
 	}
-	else
-	{
-		double usage = determine_usage(interval, PROC_BUF);
-		print_usage(usage, precision, unit, space);
-	}
+	while (monitor);
 
 	return EXIT_SUCCESS;
 }
