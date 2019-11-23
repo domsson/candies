@@ -9,10 +9,10 @@
 
 struct config 
 {
-	int list      : 1;	// list chips and features
-	int unit      : 1;	// also print the °C unit
-	int space     : 1;      // space between val and unit
-	int imperial  : 1;      // use fahrenheit (imperial)
+	int list : 1;           // list chips and features
+	int unit : 1;           // also print the °C unit
+	int space : 1;          // space between val and unit
+	int imperial : 1;       // use fahrenheit (imperial)
 	int precision;          // decimal places in output
 	char *unit_str;         // holds the actual unit string
 	char *chip;	        // chip prefix to look for
