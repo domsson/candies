@@ -4,6 +4,26 @@
 #include <string.h>           // strstr()
 #include <sensors/sensors.h>
 
+#define UNIT_METRIC   "°C" 
+#define UNIT_IMPERIAL "°F"
+
+struct config 
+{
+	int list      : 1;	// list chips and features
+	int unit      : 1;	// also print the °C unit
+	int space     : 1;      // space between val and unit
+	int imperial  : 1;      // use fahrenheit (imperial)
+	int precision;          // decimal places in output
+	char *unit_str;         // holds the actual unit string
+	char *chip;	        // chip prefix to look for
+	char *feat;	        // feature label to look for
+};
+
+double to_fahrenheit(double celcius)
+{
+	return (celcius * 1.8) + 32;
+}
+
 /**
  * Goes through the list of chips and looks for the one with the given prefix.
  * Returns the specified chip if found, otherwise NULL.
@@ -67,7 +87,7 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
  * List all temperature features of the provided chip, including their readings.
  * Temperature readings will be formatted according to precision and unit.
  */
-void list_features(sensors_chip_name const *cm, int precision, int unit)
+void list_features(sensors_chip_name const *cm, struct config *cfg)
 {
 	// Iterate over the features
 	sensors_feature const *fc = NULL; // current feature
@@ -93,8 +113,11 @@ void list_features(sensors_chip_name const *cm, int precision, int unit)
 		double temp;
 		if (get_temp_value(cm, fc, &temp) == 0)
 		{
-			fprintf(stdout, " '-[%d] %s (%.*f%s)\n", f, fl, 
-					precision, temp, unit ? " °C" : "");
+			fprintf(stdout, " '-[%d] %s (%.*f%s%s)\n", f, fl, 
+				cfg->precision, 
+				cfg->imperial ? to_fahrenheit(temp) : temp,
+				cfg->space && cfg->unit ? " " : "",
+				cfg->unit_str);
 		}
 		else
 		{
@@ -109,7 +132,7 @@ void list_features(sensors_chip_name const *cm, int precision, int unit)
 /**
  * Prints all detected chips and their features to stdout.
  */
-void list_chips_and_features(int precision, int unit)
+void list_chips_and_features(struct config *cfg)
 {
 	// Iterate over the chips
 	sensors_chip_name const *cc = NULL; // current chip
@@ -117,19 +140,18 @@ void list_chips_and_features(int precision, int unit)
 
 	while(cc = sensors_get_detected_chips(NULL, &c))
 	{
-		fprintf(stdout, "[%d] %s\n", c, cc->prefix);
-		list_features(cc, precision, unit);
+		fprintf(stdout, "[%d] %s (from %s)\n", c, cc->prefix, cc->path);
+		list_features(cc, cfg);
 	}
 }
 
 /**
  * Prints the provided temperature value to stdout.
  */
-void print_temp(double temp, int precision, int unit, int space)
+void print_temp(double temp, int precision, const char *unit, int space)
 {
 	fprintf(stdout, "%.*f%s%s\n", precision, temp, 
-			space && unit ? " " : "",
-			unit ? "°C" : "");
+			space && strlen(unit) ? " " : "", unit);
 }
 
 /**
@@ -138,15 +160,14 @@ void print_temp(double temp, int precision, int unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] -c CHIP -f FEATURE\n", invocation);
+     	fprintf(stderr, "\t%s [OPTION...] [-p PRECISION] -c CHIP -f FEATURE\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
+	fprintf(stderr, "\t-i Use Fahrenheit instead of Celcius.\n");
 	fprintf(stderr, "\t-l List all chips and features, then exit.\n");
 	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
 	fprintf(stderr, "\t-s Print a space between value and unit.\n");
-	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
-	fprintf(stderr, "\t-v Print additional information, similar to -l.\n");
 }
 
 /**
@@ -156,47 +177,44 @@ void help(char *invocation)
  */
 int main(int argc, char **argv)
 {
-	int list = 0;		// list chips and features
-	int unit = 0;		// also print the °C unit
-	int space = 0;          // space between val and unit
-	int precision = 0;      // decimal places in output
-	int verbose = 0;	// print additional info
-	char *chip = NULL;	// chip prefix to look for
-	char *feat = NULL;	// feature label to look for
+	struct config cfg = { 0 };
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "c:f:p:usvlh")) != -1)
+	while ((o = getopt(argc, argv, "c:f:p:iusvlh")) != -1)
 	{
 		switch (o)
 		{
 			case 'c':
-				chip = optarg;
+				cfg.chip = optarg;
 				break;
 			case 'f':
-				feat = optarg;
+				cfg.feat = optarg;
+				break;
+			case 'i':
+				cfg.imperial = 1;
 				break;
 			case 'p':
-				precision = atoi(optarg);
+				cfg.precision = atoi(optarg);
 				break;
 			case 'u':
-				unit = 1;
+				cfg.unit = 1;
 				break;
 			case 's':
-				space = 1;
-				break;
-			case 'v':
-				verbose = 1;
+				cfg.space = 1;
 				break;
 			case 'l':
-				list = 1;
+				cfg.list = 1;
 				break;
 			case 'h':
 				help(argv[0]);
 				return EXIT_SUCCESS;
 		}
 	}
+
+	// Set the unit string to imperial (F) or metric (C)
+	cfg.unit_str = cfg.unit ? (cfg.imperial ? UNIT_IMPERIAL : UNIT_METRIC) : "";
 
 	// Init sensors library
 	if (sensors_init(NULL) != 0)
@@ -206,15 +224,15 @@ int main(int argc, char **argv)
 	}
 
 	// List chips and exit (if that's what we're supposed to do)
-	if (list)
+	if (cfg.list)
 	{
-		list_chips_and_features(precision, unit);
+		list_chips_and_features(&cfg);
 		sensors_cleanup();
 		return EXIT_SUCCESS;
 	}
 
 	// Chip and/or feature not given? Print help and exit
-	if (chip == NULL || feat == NULL)
+	if (cfg.chip == NULL || cfg.feat == NULL)
 	{
 		help(argv[0]);
 		sensors_cleanup();
@@ -222,7 +240,7 @@ int main(int argc, char **argv)
 	}
 
 	// Find the chip that matches the provided chip name
-	sensors_chip_name const *cm = find_chip(chip);
+	sensors_chip_name const *cm = find_chip(cfg.chip);
 
 	// Abort if we didn't find any matching chips
 	if (cm == NULL)
@@ -231,11 +249,6 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 	
-	if (verbose)
-	{
-		fprintf(stderr, "Chip: %s from %s\n", cm->prefix, cm->path);
-	}
-
 	// Iterate over the features
 	sensors_feature const *fc = NULL; // current feature
 	int f = 0;
@@ -260,11 +273,10 @@ int main(int argc, char **argv)
 		}
 
 		// Check if this is a feature the user is interested in
-		if (feat && strstr(fl, feat) != NULL)
+		if (cfg.feat && strstr(fl, cfg.feat) != NULL)
 		{
 			// If so, we get the temperature and add it
 			double curr = 0.0;
-			int ret = get_temp_value(cm, fc, &curr);
 
 			if (get_temp_value(cm, fc, &curr) != 0)
 			{
@@ -273,13 +285,6 @@ int main(int argc, char **argv)
 
 			temp += curr;
 			++count;
-				
-			if (verbose)
-			{
-				fprintf(stderr, " '- Feature: %s (%.*f%s)\n", 
-							fl, precision, curr, 
-							unit ? " °C" : "");
-			}
 		}
 
 		free(fl);
@@ -295,7 +300,8 @@ int main(int argc, char **argv)
 
 	// Print the summed temperature value divided by the number of values
 	setbuf(stdout, NULL);
-	print_temp(temp / count, precision, unit, space);
+	double final = cfg.imperial ? to_fahrenheit(temp / count) : temp / count;
+	print_temp(final, cfg.precision, cfg.unit_str, cfg.space);
 
 	// Cleanup
 	sensors_cleanup();
