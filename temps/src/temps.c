@@ -113,7 +113,7 @@ void list_features(sensors_chip_name const *cm, struct config *cfg)
 		double temp;
 		if (get_temp_value(cm, fc, &temp) == 0)
 		{
-			fprintf(stdout, " '-[%d] %s (%.*f%s%s)\n", f, fl, 
+			fprintf(stdout, " '-[F%d] %s (%.*f%s%s)\n", f, fl, 
 				cfg->precision, 
 				cfg->imperial ? to_fahrenheit(temp) : temp,
 				cfg->space && cfg->unit ? " " : "",
@@ -121,7 +121,7 @@ void list_features(sensors_chip_name const *cm, struct config *cfg)
 		}
 		else
 		{
-			fprintf(stdout, " '-[%d] %s (n/a)", f, fl); 
+			fprintf(stdout, " '-[F%d] %s (n/a)", f, fl); 
 		}
 
 		free(fl);
@@ -140,7 +140,7 @@ void list_chips_and_features(struct config *cfg)
 
 	while(cc = sensors_get_detected_chips(NULL, &c))
 	{
-		fprintf(stdout, "[%d] %s (from %s)\n", c, cc->prefix, cc->path);
+		fprintf(stdout, "[C%d] %s (from %s)\n", c, cc->prefix, cc->path);
 		list_features(cc, cfg);
 	}
 }
