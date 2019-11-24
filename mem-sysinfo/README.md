@@ -7,7 +7,7 @@ wrappers, like [`succade`](https://github.com/domsson/succade).
 ## Concept 
 
 The tool gets information about the amount of total and free memory via 
-`sysinfo()`.
+`sysinfo()`. This means that this tool is Linux-specific (not portable).
 
 ## Dependencies
 
