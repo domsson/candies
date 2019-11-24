@@ -2,7 +2,6 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr()
-#include <time.h>             // nanosleep()
 
 #define PROC_BUF 128
 
