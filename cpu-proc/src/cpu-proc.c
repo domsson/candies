@@ -78,13 +78,15 @@ double determine_usage(const char *file, size_t buf_len, int interval, long *tot
 
 	if (*total == 0 && *idle == 0)
 	{
+		// TODO: add error handling (this might return -1)
 		read_cpu_stats(file, cpu_stats, buf_len, total, idle);
 	}
 
 	sleep(interval);
 	
+	// TODO: add error handling (this might return -1)
 	read_cpu_stats(file, cpu_stats, buf_len, &new_total, &new_idle);
-
+	
 	long delta_total = new_total - *total;
 	long delta_idle  = new_idle  - *idle;
 
