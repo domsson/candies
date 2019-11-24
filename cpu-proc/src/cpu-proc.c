@@ -3,8 +3,6 @@
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr()
 
-#define PROC_BUF 128
-
 #define DEFAULT_UNIT    "%"
 #define DEFAULT_INTERVAL 1
 #define DEFAULT_PROCFILE "/proc/stat"
@@ -17,7 +15,7 @@
  * the difference between them to get meaningful information regarding current 
  * CPU usage. Returns 0 on success, -1 on error (couldn't open file for read).
  */
-int read_cpu_stats(const char *file, char *buf, size_t len, long *total, long *idle)
+int read_cpu_stats(const char *file, long *total, long *idle)
 {
 	FILE *fp = fopen(file, "r");
 	if (fp == NULL)
@@ -25,7 +23,12 @@ int read_cpu_stats(const char *file, char *buf, size_t len, long *total, long *i
 		return -1;
 	}
 
-	fgets(buf, len, fp);
+	char *buf = NULL;
+	size_t len = 0;
+	if (getline(&buf, &len, fp) == -1)
+	{
+		return -1;
+	}
 
 	char *token;
 	int i;
@@ -44,6 +47,7 @@ int read_cpu_stats(const char *file, char *buf, size_t len, long *total, long *i
 		*total += atoll(token);
 	}
 
+	free(buf);
 	fclose(fp);
 	return 0;
 }
@@ -68,23 +72,21 @@ double calc_usage(long delta_total, long delta_idle)
  * returned CPU usage: shorter times make for a more 'current' usage, but will 
  * reduce the validity of the value and vice versa. 
  */
-double determine_usage(const char *file, size_t buf_len, int interval, long *total, long *idle)
+double determine_usage(const char *file, int interval, long *total, long *idle)
 {
-	char cpu_stats[buf_len];
-
 	long new_total = 0;
 	long new_idle  = 0;
 
 	if (*total == 0 && *idle == 0)
 	{
 		// TODO: add error handling (this might return -1)
-		read_cpu_stats(file, cpu_stats, buf_len, total, idle);
+		read_cpu_stats(file, total, idle);
 	}
 
 	sleep(interval);
 	
 	// TODO: add error handling (this might return -1)
-	read_cpu_stats(file, cpu_stats, buf_len, &new_total, &new_idle);
+	read_cpu_stats(file, &new_total, &new_idle);
 	
 	long delta_total = new_total - *total;
 	long delta_idle  = new_idle  - *idle;
@@ -175,7 +177,7 @@ int main(int argc, char **argv)
 
 	do
 	{
-		usage = determine_usage(file, PROC_BUF, interval, &total, &idle);
+		usage = determine_usage(file, interval, &total, &idle);
 		print_usage(usage, precision, unit ? DEFAULT_UNIT : "", space);
 	}
 	while (monitor);
