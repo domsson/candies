@@ -2,20 +2,27 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr()
+#include <math.h>             // pow(), fabs()
+#include <float.h>            // DBL_MAX
 #include <sensors/sensors.h>
 
 #define UNIT_METRIC   "°C" 
 #define UNIT_IMPERIAL "°F"
 
+#define DEFAULT_INTERVAL  1
+#define DEFAULT_THRESHOLD 1
+
+
 struct config 
 {
 	int list : 1;           // list chips and features
+	int monitor : 1;        // monitor mode (keep running)?
 	int unit : 1;           // also print the °C unit
 	int space : 1;          // space between val and unit
-	int imperial : 1;       // use fahrenheit (imperial)
+	int imperial: 1;        // use fahrenheit (imperial)
 	int precision;          // decimal places in output
+	int interval;           // seconds between temp checks
 	double threshold;       // (not yet in use)
-	char *unit_str;         // holds the actual unit string
 	char *chip;	        // chip prefix to look for
 	char *feat;	        // feature label to look for
 };
@@ -146,6 +153,55 @@ void list_chips_and_features(struct config *cfg)
 	}
 }
 
+double determine_temp(sensors_chip_name const *cm, const char *feat, double *t, size_t *n)
+{
+	// Iterate over the features
+	sensors_feature const *fc = NULL; // current feature
+	int f = 0;
+
+	*t = 0.0;
+	*n = 0;
+
+	double curr = 0.0;
+
+	while (fc = sensors_get_features(cm, &f))
+	{
+		// Not a temperature? Not interested!
+		if (fc->type != SENSORS_FEATURE_TEMP)
+		{
+			continue;
+		}
+
+		// Get the feature's label
+		char *fl = sensors_get_label(cm, fc);
+		if (fl == NULL)
+		{
+			// Error getting the label
+			continue;
+		}
+
+		// Check if this is a feature the user is interested in
+		if (feat && strstr(fl, feat) != NULL)
+		{
+			// If so, we get the temperature and add it
+			curr = 0.0;
+			if (get_temp_value(cm, fc, &curr) != 0)
+			{
+				continue;
+			}
+
+			*t += curr;
+			++(*n);
+		}
+
+		free(fl);
+		fl = NULL;
+	}
+
+	return *t / *n;
+}
+
+
 /**
  * Prints the provided temperature value to stdout.
  */
@@ -161,23 +217,24 @@ void print_temp(double temp, int precision, const char *unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] [-p PRECISION] -c CHIP -f FEATURE\n", invocation);
+     	fprintf(stderr, "\t%s [OPTION...] -c CHIP -f FEATURE\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "\t-e Use Fahrenheit instead of Celcius.\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-i Use Fahrenheit instead of Celcius.\n");
+	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
 	fprintf(stderr, "\t-l List all chips and features, then exit.\n");
-	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
+	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n");
+	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
 	fprintf(stderr, "\t-s Print a space between value and unit.\n");
+	fprintf(stderr, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stderr, "\t-u Include the temperature unit in the output.\n");
 }
 
 /**
  * Sources:
  * - manpage for libsensors
  * - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
- *
- * TODO
- * - implement monitor mode (keep running, print when change detected)
  */
 int main(int argc, char **argv)
 {
@@ -187,12 +244,15 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "c:f:hilp:st:u")) != -1)
+	while ((o = getopt(argc, argv, "c:ef:hi:lmp:st:u")) != -1)
 	{
 		switch (o)
 		{
 			case 'c':
 				cfg.chip = optarg;
+				break;
+			case 'e':
+				cfg.imperial = 1;
 				break;
 			case 'f':
 				cfg.feat = optarg;
@@ -201,10 +261,13 @@ int main(int argc, char **argv)
 				help(argv[0]);
 				return EXIT_SUCCESS;
 			case 'i':
-				cfg.imperial = 1;
+				cfg.interval = atoi(optarg);
 				break;
 			case 'l':
 				cfg.list = 1;
+				break;
+			case 'm':
+				cfg.monitor = 1;
 				break;
 			case 'p':
 				cfg.precision = atoi(optarg);
@@ -221,8 +284,6 @@ int main(int argc, char **argv)
 		}
 	}
 
-	// Set the unit string to imperial (F) or metric (C)
-	cfg.unit_str = cfg.unit ? (cfg.imperial ? UNIT_IMPERIAL : UNIT_METRIC) : "";
 
 	// Init sensors library
 	if (sensors_init(NULL) != 0)
@@ -246,7 +307,7 @@ int main(int argc, char **argv)
 		sensors_cleanup();
 		return EXIT_SUCCESS;
 	}
-
+	
 	// Find the chip that matches the provided chip name
 	sensors_chip_name const *cm = find_chip(cfg.chip);
 
@@ -256,60 +317,75 @@ int main(int argc, char **argv)
 		sensors_cleanup();
 		return EXIT_FAILURE;
 	}
+
+	// If no threshold given, determine it based on the precision
+	if (cfg.threshold == -1)
+	{
+		cfg.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) cfg.precision);
+	}
+
+	// If no interval given, use the default
+	if (cfg.interval == 0)
+	{
+		// Set interval to 0 if we don't monitor
+		cfg.interval = DEFAULT_INTERVAL;
+	}
+
+	// Reset interval to 0 if we don't monitor anyway
+	if (cfg.monitor == 0)
+	{
+		cfg.interval = 0;
+	}
 	
-	// Iterate over the features
-	sensors_feature const *fc = NULL; // current feature
-	int f = 0;
+	// Prepare strings we'll need multiple times 
+	const char *str_unit = cfg.unit ? (cfg.imperial ? UNIT_IMPERIAL : UNIT_METRIC) : "";
 
-	double temp = 0.0;
-	size_t count = 0;
-
-	while (fc = sensors_get_features(cm, &f))
-	{
-		// Not a temperature? Not interested!
-		if (fc->type != SENSORS_FEATURE_TEMP)
-		{
-			continue;
-		}
-
-		// Get the feature's label
-		char *fl = sensors_get_label(cm, fc);
-		if (fl == NULL)
-		{
-			// Error getting the label
-			continue;
-		}
-
-		// Check if this is a feature the user is interested in
-		if (cfg.feat && strstr(fl, cfg.feat) != NULL)
-		{
-			// If so, we get the temperature and add it
-			double curr = 0.0;
-
-			if (get_temp_value(cm, fc, &curr) != 0)
-			{
-				continue;
-			}
-
-			temp += curr;
-			++count;
-		}
-
-		free(fl);
-		fl = NULL;
-	}
-
-	// We didn't manage to find a temp value
-	if (count <= 0)
-	{
-		sensors_cleanup();
-		return EXIT_FAILURE;
-	}
-
-	// Print the summed temperature value divided by the number of values
+	// Disable stdout buffering
 	setbuf(stdout, NULL);
-	double final = cfg.imperial ? to_fahrenheit(temp / count) : temp / count;
-	print_temp(final, cfg.precision, cfg.unit_str, cfg.space);
+
+	// Loop vars
+	double temp_sum = 0.0;
+	size_t temp_num = 0;
+	double temp_avg_prev  = -DBL_MAX;
+	double temp_avg_curr  =  0.0;
+	double temp_avg_delta =  0.0;
+
+	do
+	{
+		// Get the current temperature (average of all found values)
+		temp_avg_curr = determine_temp(cm, cfg.feat, &temp_sum, &temp_num);
+		
+		// We didn't manage to find a temp value
+		if (temp_num <= 0)
+		{
+			// k thx bye :(
+			sensors_cleanup();
+			return EXIT_FAILURE;
+		}
+
+		// Convert to Fahrenheit, if the user asked us to
+		if (cfg.imperial)
+		{
+			temp_avg_curr = to_fahrenheit(temp_avg_curr);
+		}
+
+		// Figure out the difference to the previously printed value
+		temp_avg_delta = fabs(temp_avg_curr - temp_avg_prev);
+
+		// Check if the difference is significant enough
+		if (temp_avg_delta >= cfg.threshold)
+		{
+			// Print (and possibly convert to Fahrenheit first) 
+			print_temp(temp_avg_curr, cfg.precision, str_unit, cfg.space);
+
+			// Update values
+			temp_avg_prev = temp_avg_curr;
+		}
+
+		// Sleep, maybe (if interval > 0)
+		sleep(cfg.interval);
+	}
+	while (cfg.monitor);
 
 	// Cleanup
 	sensors_cleanup();
