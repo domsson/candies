@@ -31,17 +31,18 @@ None.
 
 ## Building
 
-- Make sure `gcc` are installed
+- Make sure `gcc` is installed
 - Run the included `build` script
 
 ## Usage
 
-    mem-sysinfo [-h] [-i INTERVAL] [-m] [-p NUM] [-s] [-u]
+    mem-sysinfo [OPTIONS...]
 
 - `-h` print usage information, then exit
-- `-i` time between memory checks/prints, in seconds
-- `-m` keep running and printing every second (or every INTERVAL seconds)
-- `-p` precision: number of decimals to include in the output
+- `-i INTERVAL` seconds between checking for a change in value; default is `1`
+- `-m` keep running and print when there is a visible change in value 
+- `-p PRECISION` number of decimal digits to include in the output
 - `-s` print a space between the value and unit
+- `-t THRESHOLD` required change in value in order to print again; default is `1`
 - `-u` add the percentage sign (`" %"`) to the output
 
