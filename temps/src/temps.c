@@ -14,6 +14,7 @@ struct config
 	int space : 1;          // space between val and unit
 	int imperial : 1;       // use fahrenheit (imperial)
 	int precision;          // decimal places in output
+	double threshold;       // (not yet in use)
 	char *unit_str;         // holds the actual unit string
 	char *chip;	        // chip prefix to look for
 	char *feat;	        // feature label to look for
@@ -174,15 +175,19 @@ void help(char *invocation)
  * Sources:
  * - manpage for libsensors
  * - User Mat on Stack overflow: https://stackoverflow.com/a/8565176
+ *
+ * TODO
+ * - implement monitor mode (keep running, print when change detected)
  */
 int main(int argc, char **argv)
 {
 	struct config cfg = { 0 };
+	cfg.threshold = -1.0;
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "c:f:p:iusvlh")) != -1)
+	while ((o = getopt(argc, argv, "c:f:hilp:st:u")) != -1)
 	{
 		switch (o)
 		{
@@ -192,24 +197,27 @@ int main(int argc, char **argv)
 			case 'f':
 				cfg.feat = optarg;
 				break;
+			case 'h':
+				help(argv[0]);
+				return EXIT_SUCCESS;
 			case 'i':
 				cfg.imperial = 1;
-				break;
-			case 'p':
-				cfg.precision = atoi(optarg);
-				break;
-			case 'u':
-				cfg.unit = 1;
-				break;
-			case 's':
-				cfg.space = 1;
 				break;
 			case 'l':
 				cfg.list = 1;
 				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
+			case 'p':
+				cfg.precision = atoi(optarg);
+				break;
+			case 's':
+				cfg.space = 1;
+				break;
+			case 't':
+				cfg.threshold = atof(optarg);
+				break;
+			case 'u':
+				cfg.unit = 1;
+				break;
 		}
 	}
 
