@@ -30,14 +30,17 @@ otherwise `temps` does nothing.
 
 ## Usage
 
-    temps [-h] [-i] [-l] [-p NUM] [-s] [-u]  -c CHIP -f FEATURE
+    temps [OPTIONS...] -c CHIP -f FEATURE
 
+- `-e` use imperial units instead of metric
 - `-h` print usage information, then exit
-- `-i` use imperial units instead of metric
+- `-i INTERVAL` seconds between checking for a change in value
 - `-l` list all available chips and their features, then exit
-- `-p` precision: number of decimals to include in the output
+- `-m` keep running and prin when there is a visible change in value
+- `-p PREVISION` number of decimal digits to include in the output
 - `-s` print a space between the value and unit
-- `-u` add the Celcius unit (`" °C"`) to the output
+- `-t THRESHOLD` required change in value in order to print again
+- `-u` add the temperature unit to the output
 
-Note that `-c` and `-f` currently use `strstr()` internally, which means the given string will be searched for in the actual chip/feature name. In other words, `-c core` will match `coretemp`, as `core` is a substring of `coretemp`.
+Note that `-c` and `-f` currently use `strstr()` internally, which means the given string will be searched for in the actual chip/feature name. In other words, `-c core` will match `coretemp`, as `core` is a substring of `coretemp`. Also note that the string comparison is case sensitive, so `core` is not the same as `Core`.
 

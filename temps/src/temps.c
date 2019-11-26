@@ -217,7 +217,7 @@ void print_temp(double temp, int precision, const char *unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] -c CHIP -f FEATURE\n", invocation);
+     	fprintf(stderr, "\t%s [OPTIONS...] -c CHIP -f FEATURE\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-e Use Fahrenheit instead of Celcius.\n");
