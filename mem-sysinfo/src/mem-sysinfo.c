@@ -105,10 +105,15 @@ int main(int argc, char **argv)
 	// If no interval given, use the default
 	if (interval == 0)
 	{
-		// Set interval to 0 if we don't monitor (run only once)
-		interval = monitor ? DEFAULT_INTERVAL : 0;
+		interval = DEFAULT_INTERVAL;
 	}
 
+	// Set interval to 0 if we don't monitor (run only once)
+	if (monitor == 0)
+	{
+		interval = 0;
+	}
+	
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 

@@ -189,10 +189,15 @@ int main(int argc, char **argv)
 	// If no interval given, use the default
 	if (interval == 0)
 	{
-		// We don't sleep() if we don't monitor (= only run once)
-		interval = monitor ? DEFAULT_INTERVAL : 0;
+		interval = DEFAULT_INTERVAL;
 	}
-	
+
+	// Reset interval to 0 if we don't monitor
+	if (monitor == 0)
+	{
+		interval = 0;
+	}
+
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
