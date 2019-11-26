@@ -2,16 +2,12 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr()
+#include <math.h>             // pow(), fabs()
 #include <sys/sysinfo.h>      // sysinfo()
 
-#define DEFAULT_UNIT    "%"
-#define DEFAULT_INTERVAL 1
-
-void print_usage(double usage, int precision, const char *unit, int space)
-{
-	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
-			space && strlen(unit) ? " " : "", unit);
-}
+#define DEFAULT_UNIT      "%"
+#define DEFAULT_INTERVAL   1
+#define DEFAULT_THRESHOLD  1.0
 
 int get_mem_info(unsigned long *total, unsigned long *free)
 {
@@ -26,19 +22,28 @@ int get_mem_info(unsigned long *total, unsigned long *free)
 	return 0;
 }
 
+void print_usage(double usage, int precision, const char *unit, int space)
+{
+	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
+			space && strlen(unit) ? " " : "", unit);
+}
+
 /**
  * Prints usage information.
  */
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] [-f PROCFILE] [-i INTERVAL] [-p PRECISION]\n", invocation);
+     	fprintf(stderr, "\t%s [OPTION...]\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-m Keep running and printing every second (or INTERVAL seconds).\n"); 
-	fprintf(stderr, "\t-u Print a percentage sign after the CPu usage value.\n");
-	fprintf(stderr, "\t-s Print a space between CPU usage and percentage sign.\n");
+	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stderr, "\t-s Print a space between value and unit.\n");
+	fprintf(stderr, "\t-t Requried change in value in order to print again; default is 1.\n");
+	fprintf(stderr, "\t-u Print the appropriate unit after the value.\n");
 }
 
 int main(int argc, char **argv)
@@ -58,59 +63,83 @@ int main(int argc, char **argv)
 	int unit = 0;		// also print the % unit
 	int space = 0;          // space between val and unit
 	int precision = 0;      // decimal places in output
+	double threshold = -1;  // minimum change in value to issue a print
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "mi:p:ush")) != -1)
+	while ((o = getopt(argc, argv, "hi:mp:st:u")) != -1)
 	{
 		switch (o)
 		{
-			case 'm':
-				monitor = 1;
-				break;
+			case 'h':
+				help(argv[0]);
+				return EXIT_SUCCESS;
 			case 'i':
 				interval = atoi(optarg);
+				break;
+			case 'm':
+				monitor = 1;
 				break;
 			case 'p':
 				precision = atoi(optarg);
 				break;
-			case 'u':
-				unit = 1;
-				break;
 			case 's':
 				space = 1;
 				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
+			case 't':
+				threshold = atof(optarg);
+				break;
+			case 'u':
+				unit = 1;
+				break;
 		}
+	}
+
+	// If no threshold given, determine it based on precision
+	if (threshold == -1)
+	{
+		threshold = DEFAULT_THRESHOLD / pow(10.0, (double) precision);
 	}
 
 	// If no interval given, use the default
 	if (interval == 0)
 	{
-		interval = DEFAULT_INTERVAL;
-	}
-
-	// If we only run once, we set the interval to 0 
-	if (monitor == 0)
-	{
-		interval = 0;
+		// Set interval to 0 if we don't monitor (run only once)
+		interval = monitor ? DEFAULT_INTERVAL : 0;
 	}
 
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
+	// Loop variables
 	unsigned long total = 0;
 	unsigned long free  = 0;
-	double usage = 0;
+	double usage_prev  = 0.0;	// last usage value we printed (!)
+	double usage_curr  = 0.0;	// current usage value
+	double usage_delta = 0.0;	// difference to last printed value
 
 	do
 	{
-		get_mem_info(&total, &free);
-		usage = (1 - ((double) free / (double) total)) * 100;
-		print_usage(usage, precision, unit ? DEFAULT_UNIT : "", space);
+		if (get_mem_info(&total, &free) == -1)
+		{
+			return EXIT_FAILURE;
+		}
+		
+		// Calculate the current usage, as well as the difference
+		usage_curr  = (1 - ((double) free / (double) total)) * 100;
+		usage_delta = fabs(usage_curr - usage_prev);
+
+		if (usage_delta >= threshold)
+		{
+			// Print
+			print_usage(usage_curr, precision, unit ? DEFAULT_UNIT : "", space);
+
+			// Update values for next iteration
+			usage_prev = usage_curr;
+		}
+		
+		// Sleep, maybe (if interval > 0)
 		sleep(interval);
 	}
 	while (monitor);

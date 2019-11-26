@@ -2,7 +2,7 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr(), strtok()
-#include <math.h>             // pow()
+#include <math.h>             // pow(), fabs()
 
 #define DEFAULT_UNIT      "%"
 #define DEFAULT_INTERVAL   1
@@ -112,16 +112,18 @@ void print_usage(double usage, int precision, const char *unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] [-f PROCFILE] [-i INTERVAL] [-p PRECISION] [-t THRESHOLD]\n", invocation);
+     	fprintf(stderr, "\t%s [OPTION...]\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "\t-f File to query for memory info; default is '/proc/meminfo`.\n");
+	fprintf(stderr, "\t-g Use 'free' (not 'available') memory to calculate usage.\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-i Minimum interval, in seconds, between prints.\n");
-	fprintf(stderr, "\t-m Keep running and print every second (or INTERVAL seconds).\n"); 
-	fprintf(stderr, "\t-p Number of decimal digits in the output.\n");
-	fprintf(stderr, "\t-t Only print if usage value changed by at least this amount.\n");
-	fprintf(stderr, "\t-u Print a percentage sign after the usage value.\n");
-	fprintf(stderr, "\t-s Print a space between usage value and percentage sign.\n");
+	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stderr, "\t-s Print a space between value and unit.\n");
+	fprintf(stderr, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stderr, "\t-u Print the appropriate unit after the value.\n");
 }
 
 int main(int argc, char **argv)
@@ -138,27 +140,27 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "mf:i:p:gust:h")) != -1)
+	while ((o = getopt(argc, argv, "f:ghi:mp:st:u")) != -1)
 	{
 		switch (o)
 		{
-			case 'm':
-				monitor = 1;
-				break;
 			case 'f':
 				file = optarg;
-				break;
-			case 'i':
-				interval = atoi(optarg);
-				break;
-			case 'p':
-				precision = atoi(optarg);
 				break;
 			case 'g':
 				gross = 1;
 				break;
-			case 'u':
-				unit = 1;
+			case 'h':
+				help(argv[0]);
+				return EXIT_SUCCESS;
+			case 'i':
+				interval = atoi(optarg);
+				break;
+			case 'm':
+				monitor = 1;
+				break;
+			case 'p':
+				precision = atoi(optarg);
 				break;
 			case 's':
 				space = 1;
@@ -166,9 +168,9 @@ int main(int argc, char **argv)
 			case 't':
 				threshold = atof(optarg);
 				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
+			case 'u':
+				unit = 1;
+				break;
 		}
 	}
 
@@ -209,9 +211,12 @@ int main(int argc, char **argv)
 	// do-while, because we need to run at least once either way
 	do
 	{
-		// TODO: add error handling (this might return -1)
-		read_mem_stats(file, &total, &avail, str_total, str_avail);
+	 	if (read_mem_stats(file, &total, &avail, str_total, str_avail) == -1)
+		{
+			return EXIT_FAILURE;
+		}
 
+		// Calculate the current usage, as well as the change
 		usage_curr  = (1 - ((double) avail / (double) total)) * 100;
 		usage_delta = fabs(usage_curr - usage_prev);
 
