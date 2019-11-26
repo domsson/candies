@@ -115,9 +115,9 @@ int main(int argc, char **argv)
 	// Loop variables
 	unsigned long total = 0;
 	unsigned long free  = 0;
-	double usage_prev  = 0.0;	// last usage value we printed (!)
-	double usage_curr  = 0.0;	// current usage value
-	double usage_delta = 0.0;	// difference to last printed value
+	double usage_prev  = -1.0; // last usage value we printed (!)
+	double usage_curr  =  0.0; // current usage value
+	double usage_delta =  0.0; // difference to last printed value
 
 	do
 	{

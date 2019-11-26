@@ -204,9 +204,9 @@ int main(int argc, char **argv)
 	// Loop variables
 	ulong total = 0;
 	ulong avail = 0;
-	double usage_prev  = 0.0;	// last usage value we printed (!)
-	double usage_curr  = 0.0;	// current usage value
-	double usage_delta = 0.0;	// difference to last printed value
+	double usage_prev  = -1.0; // last usage value we printed (!)
+	double usage_curr  =  0.0; // current usage value
+	double usage_delta =  0.0; // difference to last printed value
 
 	// do-while, because we need to run at least once either way
 	do

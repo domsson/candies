@@ -1,1 +1,1 @@
-gcc -o bin/cpu-proc src/cpu-proc.c
+gcc -o bin/cpu-proc src/cpu-proc.c -lm

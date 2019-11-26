@@ -2,12 +2,13 @@
 #include <stdlib.h>           // NULL, EXIT_* 
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strtok()
+#include <math.h>             // pow(), fabs()
 
-#define DEFAULT_UNIT     "%"
-#define DEFAULT_INTERVAL 1
-#define DEFAULT_PROCFILE "/proc/stat"
+#define DEFAULT_UNIT      "%"
+#define DEFAULT_INTERVAL   1
+#define DEFAULT_THRESHOLD  1
+#define DEFAULT_PROCFILE  "/proc/stat"
 
-// "unsigned long" seems unbearably long
 typedef unsigned long ulong;
 
 /*
@@ -114,13 +115,17 @@ void print_usage(double usage, int precision, const char *unit, int space)
 void help(char *invocation)
 {
 	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...] [-f PROCFILE] [-i INTERVAL] [-p PRECISION]\n", invocation);
+     	fprintf(stderr, "\t%s [OPTIONS...]\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "\t-f File to query for CPU info; default is '/proc/stat'.\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-m Keep running and printing every second (or INTERVAL seconds).\n"); 
-	fprintf(stderr, "\t-u Print a percentage sign after the CPU usage value.\n");
-	fprintf(stderr, "\t-s Print a space between CPU usage and percentage sign.\n");
+	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stderr, "\t-s Print a space between value and unit..\n");
+	fprintf(stderr, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stderr, "\t-u Print the appropriate unit after the value.\n");
 }
 
 int main(int argc, char **argv)
@@ -130,12 +135,13 @@ int main(int argc, char **argv)
 	int unit = 0;		// also print the % unit
 	int space = 0;          // space between val and unit
 	int precision = 0;      // decimal places in output
+	double threshold = -1;  // minimum change in value required to print
 	char *file = NULL;      // file to read CPU stats from
 
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "mf:i:p:ush")) != -1)
+	while ((o = getopt(argc, argv, "f:hi:mp:st:u")) != -1)
 	{
 		switch (o)
 		{
@@ -168,22 +174,46 @@ int main(int argc, char **argv)
 		file = DEFAULT_PROCFILE;
 	}
 
+	if (threshold == -1)
+	{
+		threshold = DEFAULT_THRESHOLD / pow(10.0, (double) precision);
+	}
+
 	if (interval == 0)
 	{
+		// We need some interval, as we need to take two measurements
 		interval = DEFAULT_INTERVAL;
 	}
-	
+
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
+	// Prepare string we'll need multiple times
+	const char *str_unit = unit ? DEFAULT_UNIT : "";
+
+	// Loop variables
+	int first = 1;
 	ulong total   = 0;
 	ulong idle    = 0;
-	double usage = 0;
+	double usage_prev  = -1.0; // makes sure that we print the first time
+	double usage_curr  =  0.0;
+	double usage_delta =  0.0;
 
 	do
 	{
-		usage = determine_usage(file, interval, &total, &idle);
-		print_usage(usage, precision, unit ? DEFAULT_UNIT : "", space);
+		// Calculate usage (this will do the sleep internally)
+		usage_curr  = determine_usage(file, interval, &total, &idle);
+		usage_delta = fabs(usage_curr - usage_prev);
+
+		// Check if the value changed enough for us to print
+		if (usage_delta >= threshold)
+		{
+			// Print
+			print_usage(usage_curr, precision, str_unit, space);
+
+			// Update values
+			usage_prev = usage_curr;
+		}
 	}
 	while (monitor);
 
