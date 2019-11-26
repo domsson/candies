@@ -192,7 +192,6 @@ int main(int argc, char **argv)
 	const char *str_unit = unit ? DEFAULT_UNIT : "";
 
 	// Loop variables
-	int first = 1;
 	ulong total   = 0;
 	ulong idle    = 0;
 	double usage_prev  = -1.0; // makes sure that we print the first time
