@@ -13,7 +13,7 @@ void print_usage(double usage, int precision, const char *unit, int space)
 			space && strlen(unit) ? " " : "", unit);
 }
 
-int get_mem_info(long *total, long *free)
+int get_mem_info(unsigned long *total, unsigned long *free)
 {
 	struct sysinfo info = { 0 };
 	if (sysinfo(&info) == -1)
@@ -87,16 +87,23 @@ int main(int argc, char **argv)
 		}
 	}
 
+	// If no interval given, use the default
 	if (interval == 0)
 	{
 		interval = DEFAULT_INTERVAL;
 	}
-	
+
+	// If we only run once, we set the interval to 0 
+	if (monitor == 0)
+	{
+		interval = 0;
+	}
+
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
-	long total   = 0;
-	long free    = 0;
+	unsigned long total = 0;
+	unsigned long free  = 0;
 	double usage = 0;
 
 	do
@@ -104,10 +111,7 @@ int main(int argc, char **argv)
 		get_mem_info(&total, &free);
 		usage = (1 - ((double) free / (double) total)) * 100;
 		print_usage(usage, precision, unit ? DEFAULT_UNIT : "", space);
-		if (monitor)
-		{
-			sleep(interval);
-		}
+		sleep(interval);
 	}
 	while (monitor);
 
