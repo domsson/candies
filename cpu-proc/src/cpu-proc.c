@@ -1,11 +1,14 @@
-#include <stdio.h>            // fprintf
-#include <stdlib.h>           // NULL, EXIT_*
+#include <stdio.h>            // fprintf(), getline(), fopen(), ...
+#include <stdlib.h>           // NULL, EXIT_* 
 #include <unistd.h>           // getopt() et al.
-#include <string.h>           // strstr()
+#include <string.h>           // strtok()
 
-#define DEFAULT_UNIT    "%"
+#define DEFAULT_UNIT     "%"
 #define DEFAULT_INTERVAL 1
 #define DEFAULT_PROCFILE "/proc/stat"
+
+// "unsigned long" seems unbearably long
+typedef unsigned long ulong;
 
 /*
  * Opens and reads the first line from the given file, which is assumed to have 
@@ -15,7 +18,7 @@
  * the difference between them to get meaningful information regarding current 
  * CPU usage. Returns 0 on success, -1 on error (couldn't open file for read).
  */
-int read_cpu_stats(const char *file, long *total, long *idle)
+int read_cpu_stats(const char *file, ulong *total, ulong *idle)
 {
 	FILE *fp = fopen(file, "r");
 	if (fp == NULL)
@@ -41,10 +44,12 @@ int read_cpu_stats(const char *file, long *total, long *idle)
 
 		if (i == 4)
 		{
-			*idle = atoll(token);
+			// TODO add error handling
+			*idle = strtoul(token, NULL, 0);
 		}
 
-		*total += atoll(token);
+		// TODO add error handling
+		*total += strtoul(token, NULL, 0);
 	}
 
 	free(buf);
@@ -57,7 +62,7 @@ int read_cpu_stats(const char *file, long *total, long *idle)
  * represents the CPU usage for the timespan indirectly given by the delta that 
  * was used to calculate the given values.
  */
-double calc_usage(long delta_total, long delta_idle)
+double calc_usage(ulong delta_total, ulong delta_idle)
 {
 	return (1 - ((double) delta_idle / (double) delta_total)) * 100;
 }
@@ -72,11 +77,8 @@ double calc_usage(long delta_total, long delta_idle)
  * returned CPU usage: shorter times make for a more 'current' usage, but will 
  * reduce the validity of the value and vice versa. 
  */
-double determine_usage(const char *file, int interval, long *total, long *idle)
+double determine_usage(const char *file, int interval, ulong *total, ulong *idle)
 {
-	long new_total = 0;
-	long new_idle  = 0;
-
 	if (*total == 0 && *idle == 0)
 	{
 		// TODO: add error handling (this might return -1)
@@ -85,11 +87,14 @@ double determine_usage(const char *file, int interval, long *total, long *idle)
 
 	sleep(interval);
 	
+	ulong new_total = 0;
+	ulong new_idle  = 0;
+	
 	// TODO: add error handling (this might return -1)
 	read_cpu_stats(file, &new_total, &new_idle);
 	
-	long delta_total = new_total - *total;
-	long delta_idle  = new_idle  - *idle;
+	ulong delta_total = new_total - *total;
+	ulong delta_idle  = new_idle  - *idle;
 
 	*total = new_total;
 	*idle  = new_idle;
@@ -114,7 +119,7 @@ void help(char *invocation)
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
 	fprintf(stderr, "\t-m Keep running and printing every second (or INTERVAL seconds).\n"); 
-	fprintf(stderr, "\t-u Print a percentage sign after the CPu usage value.\n");
+	fprintf(stderr, "\t-u Print a percentage sign after the CPU usage value.\n");
 	fprintf(stderr, "\t-s Print a space between CPU usage and percentage sign.\n");
 }
 
@@ -171,8 +176,8 @@ int main(int argc, char **argv)
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
-	long total   = 0;
-	long idle    = 0;
+	ulong total   = 0;
+	ulong idle    = 0;
 	double usage = 0;
 
 	do
