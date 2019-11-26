@@ -19,7 +19,7 @@ For the sake of consistency, all _candies_ should follow these design principles
 - On error, print nothing, just return with `EXIT_FAILURE`
 - By default, omit units (`%`, `°C`, etc) in the output
 - Enable printing of units, if applicable, with a `-u` argument
-- Omit the space between value and unit unless `-s` (space) is given
+- Omit the space between value and unit unless `-s` is given
 - Only print other output when requested by user via arguments
 - Candies that can monitor should enable this feature with `-m` (see below)
 
@@ -28,6 +28,11 @@ For the sake of consistency, all _candies_ should follow these design principles
 _Live blocks_, or monitoring candies, refers to the option to have the program keep running and print their result over and over again, whenever they detect a change in the value. If a block offers this option, it should be made available with the `-m` command line switch.
 
 An example would be a CPU temperature program that prints the current temperature once when initially run, then prints it again whenever the temperature changes. Each print should be terminated with a line break (`\n`).
+
+Monitoring blocks might want to optionally offer these two command line arguments:
+
+- `-t` to set the value-change threshold required to print again
+- `-i` to set the internal update interval (seconds between checking values)
 
 ## License
 
