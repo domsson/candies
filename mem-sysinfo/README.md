@@ -17,7 +17,13 @@ amount of memory theoretically _available_ for applications is not provided by
 `sysinfo()`. In other words, while this tool accurately shows the current 
 memory _usage_, this value is not what most users would intuitively expect as 
 such. To get the memory usage based on the _available_ memory, use the 
-`mem-proc` tool instead. 
+`mem-proc` tool instead.
+
+If you're wondering when you should ever use `mem-sysinfo` over `mem-proc`:
+
+- If you want the usage calculated based on _free_, not _available_ memory
+- `mem-sysinfo` is unaffected by possible future changes to `/proc/meminfo`
+- `mem-sysinfo` seems to be a little faster than `mem-proc`
 
 ## Dependencies
 
