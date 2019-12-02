@@ -1,11 +1,13 @@
 # temp-sensors
 
-This is a small utility that will try to print current system tempreatures to `stdout`.  
-It is intended to be used with status bars like `Lemonbar` and/or their wrappers, like [`succade`](https://github.com/domsson/succade).
+This is a small utility that prints current system tempreatures to `stdout`.
+It is intended to be used with status bars like `Lemonbar` or their wrappers, 
+like [`succade`](https://github.com/domsson/succade).
 
-I'm using it to print CPU temperature, which is the common use-case, but I believe the tool 
-would also be able to query other temperature sensors (_chips_), if available. See usage.  
-`temps` is generally pretty similar to the well-known `sensors`, but tailored for status bars.
+I'm using it to print CPU temperature, which is the common use-case, but the 
+tool should also be able to query other temperature sensors (_chips_), if 
+available. See usage. `tempssensors` is generally pretty similar to the 
+well-known `sensors`, but tailored for status bars.
 
 ## Concept 
 
