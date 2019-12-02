@@ -1,0 +1,1 @@
+gcc -o bin/temp-sensors src/temp-sensors.c -lsensors -lm

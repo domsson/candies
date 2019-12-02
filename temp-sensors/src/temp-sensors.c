@@ -23,6 +23,7 @@ struct config
 	int precision;          // decimal places in output
 	int interval;           // seconds between temp checks
 	double threshold;       // (not yet in use)
+	char *unit_str;
 	char *chip;	        // chip prefix to look for
 	char *feat;	        // feature label to look for
 };
@@ -283,7 +284,9 @@ int main(int argc, char **argv)
 				break;
 		}
 	}
-
+	
+	// Prepare strings we'll need multiple times 
+	cfg.unit_str = cfg.unit ? (cfg.imperial ? UNIT_IMPERIAL : UNIT_METRIC) : "";
 
 	// Init sensors library
 	if (sensors_init(NULL) != 0)
@@ -337,9 +340,6 @@ int main(int argc, char **argv)
 		cfg.interval = 0;
 	}
 	
-	// Prepare strings we'll need multiple times 
-	const char *str_unit = cfg.unit ? (cfg.imperial ? UNIT_IMPERIAL : UNIT_METRIC) : "";
-
 	// Disable stdout buffering
 	setbuf(stdout, NULL);
 
@@ -376,7 +376,7 @@ int main(int argc, char **argv)
 		if (temp_avg_delta >= cfg.threshold)
 		{
 			// Print (and possibly convert to Fahrenheit first) 
-			print_temp(temp_avg_curr, cfg.precision, str_unit, cfg.space);
+			print_temp(temp_avg_curr, cfg.precision, cfg.unit_str, cfg.space);
 
 			// Update values
 			temp_avg_prev = temp_avg_curr;
