@@ -25,7 +25,7 @@ None.
 
 - `-h` print usage information, then exit
 - `-g` use UTC/GMT instead of local time
-- `-m` keep running, printing every seconds (or every INTERVAL seconds)
+- `-m` keep running, printing every second (or every INTERVAL seconds)
 
 - `FORMAT` defines the output string, see the manpage for `date` or `strftime`
 - `INTERVAL` (seconds) specifies how often to print to `stdout`
