@@ -6,7 +6,7 @@ like [`succade`](https://github.com/domsson/succade).
 
 I'm using it to print CPU temperature, which is the common use-case, but the 
 tool should also be able to query other temperature sensors (_chips_), if 
-available. See usage. `tempssensors` is generally pretty similar to the 
+available. See usage. `temp-sensors` is generally pretty similar to the 
 well-known `sensors`, but tailored for status bars.
 
 ## Concept 
@@ -19,7 +19,7 @@ values will be read for all features that match the given feature name, using
 added up and, at the end, divided by the number of temperature values found. 
 Only the first chip that matches the given name will be taken into account. 
 If a reading was obtained, it is printed to `stdout`, including a newline,
-otherwise `temps` does nothing.
+otherwise `temp-sensors` does nothing.
 
 ## Dependencies
 
@@ -38,7 +38,7 @@ otherwise `temps` does nothing.
 - `-h` print usage information, then exit
 - `-i INTERVAL` seconds between checking for a change in value
 - `-l` list all available chips and their features, then exit
-- `-m` keep running and prin when there is a visible change in value
+- `-m` keep running and print when there is a visible change in value
 - `-p PREVISION` number of decimal digits to include in the output
 - `-s` print a space between the value and unit
 - `-t THRESHOLD` required change in value in order to print again
