@@ -1,6 +1,6 @@
 # twitch-chat 
 
-This is a small utility that prints a Twitch channels's chat to `stdout`.
+This is a small utility that prints a Twitch channel's chat to `stdout`.
 Via some simple filter options, only certain types of messages (cheers; 
 messages by VIPs, subs or mods; messages containing a specific string) 
 can be printed, plus a maximum string length can optionally be set.
