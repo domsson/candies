@@ -1,0 +1,1 @@
+gcc -o bin/temp-hwmon src/temp-hwmon.c -lm
