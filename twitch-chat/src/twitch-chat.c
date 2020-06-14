@@ -161,10 +161,10 @@ void help(char *invocation)
 	fprintf(stdout, "\tNote: the channel should start with '#' and be all lower-case.\n");
 	fprintf(stdout, "\n");
 	fprintf(stdout, "Options:\n");
-	fprintf(stdout, "\t-b\tMark VIPs, subs and mods with !, + and @ respectively.\n");
+	fprintf(stdout, "\t-b\tMark VIPs and subs width '+', mods '@'.\n");
 	fprintf(stdout, "\t-d\t Use display names instead of user names where available.\n");
-	fprintf(stdout, "\t-f STR\t Only print messages containing this exact string.\n");
-	fprintf(stdout, "\t-g INT\t Only print cheer messages with at least this many bits).\n");
+	fprintf(stdout, "\t-f STR\t Only print messages containing this exact string (case sensitive).\n");
+	fprintf(stdout, "\t-g INT\t Only print cheer messages with at least this many bits.\n");
 	fprintf(stdout, "\t-h\t Print this help text and exit.\n");
 	fprintf(stdout, "\t-n INT\t Maximum message length.\n");
 	fprintf(stdout, "\t-o\t Omit user names, only print chat messages.\n");
