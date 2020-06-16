@@ -67,9 +67,9 @@ void help(char *invocation)
 	fprintf(stdout, "\t-h\tPrint this help text and exit.\n");
 	fprintf(stdout, "\t-i SECS\tQuery server every SECS seconds. (NOT IMPLEMENTED)\n");
 	fprintf(stdout, "\t-m\tKeep running, printing new info when available. (NOT IMPLEMENTED)\n");
-	fprintf(stdout, "\t-o\tOutput mode (0 through 4, see below).\n");
-	fprintf(stdout, "\t-p\tServer port (default is 25565).\n");
-	fprintf(stdout, "\t-s\tAdd space before and after the slash (mode 0 only).\n");
+	fprintf(stdout, "\t-o MODE\tOutput mode (0 through 4, see below).\n");
+	fprintf(stdout, "\t-p PORT\tServer port (default is 25565).\n");
+	fprintf(stdout, "\t-s\tAdd spaces before and after the slash (mode 0 only).\n");
 	fprintf(stdout, "\n");
 	fprintf(stdout, "Output modes:\n");
 	fprintf(stdout, "\t0\t<players> / <slots>\n");
