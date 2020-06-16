@@ -5,6 +5,10 @@ Via some simple filter options, only certain types of messages (cheers;
 messages by VIPs, subs or mods; messages containing a specific string) 
 can be printed. Optionally, a maximum string length can be set.
 
+This can be very useful if you want a notification show up everytime 
+someone mentions or tags you (or says a specific word/phrase of interest) 
+in a Twitch channel. 
+
 ## Dependencies
 
 - [`libtwirc`](https://github.com/domsson/libtwirc)
