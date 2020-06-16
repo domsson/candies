@@ -157,7 +157,7 @@ void handle_message(twirc_state_t *s, twirc_event_t *evt)
 void help(char *invocation)
 {
 	fprintf(stdout, "Usage:\n");
-	fprintf(stdout, "\t%s -c CHANNEL [OPTIONS...]\n", invocation);
+	fprintf(stdout, "\t%s [OPTIONS...] #channel\n", invocation);
 	fprintf(stdout, "\tNote: the channel should start with '#' and be all lower-case.\n");
 	fprintf(stdout, "\n");
 	fprintf(stdout, "Options:\n");
@@ -186,15 +186,12 @@ int main(int argc, char **argv)
 	// Process command line options
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "bc:df:g:hn:op:")) != -1)
+	while ((o = getopt(argc, argv, "b:df:g:hn:op:")) != -1)
 	{
 		switch(o)
 		{
 			case 'b':
 				m.badges = 1;
-				break;
-			case 'c':
-				m.channel = optarg;
 				break;
 			case 'd':
 				m.displaynames = 1;
@@ -220,6 +217,11 @@ int main(int argc, char **argv)
 		}
 	}
 
+	if (optind < argc)
+	{
+		m.channel = argv[optind];
+	}
+
 	if (m.help)
 	{
 		help(argv[0]);
@@ -229,6 +231,7 @@ int main(int argc, char **argv)
 	// Abort if no channel name was given	
 	if (m.channel == NULL)
 	{
+		fprintf(stderr, "lol");
 		return EXIT_FAILURE;
 	}
 

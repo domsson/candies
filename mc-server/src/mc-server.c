@@ -108,11 +108,11 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 				opts->space = 1;
 				break;
 		}
+	}
 
-		if (optind < argc)
-		{
-			opts->host = argv[optind];
-		}
+	if (optind < argc)
+	{
+		opts->host = argv[optind];
 	}
 }
 
