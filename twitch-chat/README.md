@@ -20,7 +20,9 @@ in a Twitch channel.
 
 ## Usage
 
-    twitch-chat -c CHANNEL [OPTIONS...]
+    twitch-chat [OPTIONS...] #channel
+
+Note: the channel needs to start with a `#` and be all lower-case.
 
 Options:
 
