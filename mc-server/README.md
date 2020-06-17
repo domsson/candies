@@ -38,3 +38,6 @@ Output modes:
 - `3`: `<version>`
 - `4`: `<message of the day>`
 
+## To do 
+
+- Only print if the received information has changed from the previous query
