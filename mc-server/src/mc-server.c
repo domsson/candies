@@ -276,11 +276,13 @@ int main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	// if no interval given, use default
 	if (opts.interval == 0)
 	{
 		opts.interval = DEFAULT_INTERVAL;
 	}
 
+	// if monitoring is off, set interval (back) to 0
 	if (opts.monitor == 0)
 	{
 		opts.interval = 0;
@@ -312,6 +314,7 @@ int main(int argc, char **argv)
 		// print the requested info
 		print_info(&info, &opts);
 
+		// maybe sleep, maybe not
 		sleep(opts.interval);
 	}
 
