@@ -30,16 +30,16 @@ void print_vol(double vol, int precision, int unit, int space)
  */
 void help(const char *invocation)
 {
-	fprintf(stderr, "Usage:\n");
-	fprintf(stderr, "\t%s [OPTION...]\n", invocation);
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-m Enables monitor mode, where the volume is printed every time it changes.\n");
-	fprintf(stderr, "\t-p<int> Number of decimal places in the output.\n");
-	fprintf(stderr, "\t-s Print a space between value and percent sign.\n");
-	fprintf(stderr, "\t-u Include the percent sign in the output.\n");
-	fprintf(stderr, "\t-w<string> Print this string instead of the volume level when the sink is muted.\n");
+	fprintf(stdout, "Usage:\n");
+	fprintf(stdout, "\t%s [OPTION...]\n", invocation);
+	fprintf(stdout, "\n");
+	fprintf(stdout, "Options:\n");
+	fprintf(stdout, "\t-h Print this help text and exit.\n");
+	fprintf(stdout, "\t-m Enables monitor mode, where the volume is printed every time it changes.\n");
+	fprintf(stdout, "\t-p<int> Number of decimal places in the output.\n");
+	fprintf(stdout, "\t-s Print a space between value and percent sign.\n");
+	fprintf(stdout, "\t-u Include the percent sign in the output.\n");
+	fprintf(stdout, "\t-w<string> Print this string instead of the volume level when the sink is muted.\n");
 }
 
 /**
@@ -72,7 +72,7 @@ void cb_sink_info(pa_context *c, const pa_sink_info *i, int eol, void *data)
 		print_vol(percent, cfg->precision, cfg->unit, cfg->space); 
 	}
 
-	// If in NOT in monitor mode (which means we only print once)...
+	// If NOT in monitor mode (which means we only print once)...
 	if (cfg->monitor == 0)
 	{
 		// We're done, let's quit the main loop
@@ -200,7 +200,6 @@ int main(int argc, char **argv)
 	// Get the mainloop object
 	if (!(cfg.mlp = pa_mainloop_new()))
 	{
-		//fprintf(stderr, "pa_mainloop_new() failed.\n");
 		return EXIT_FAILURE;
 	}
 
@@ -210,7 +209,6 @@ int main(int argc, char **argv)
 	// Get the context object
 	if (!(cfg.ctx = pa_context_new(cfg.api, NULL)))
 	{
-		//fprintf(stderr, "pa_context_new() failed.\n");
 		cleanup(&cfg);
 		return EXIT_FAILURE;
 	}
@@ -222,18 +220,16 @@ int main(int argc, char **argv)
 	pa_context_flags_t flags = { 0 };
 	if (pa_context_connect(cfg.ctx, NULL, flags, NULL) < 0)
 	{
-		//fprintf(stderr, "pa_context_connect() failed.\n");
 		cleanup(&cfg);
 		return EXIT_FAILURE;
 	}
 
 	// Turn off buffering for stdout
-	setbuf(stdout, NULL);
+	setlinebuf(stdout);
 
 	// Run the main loop
 	if (pa_mainloop_run(cfg.mlp, NULL) < 0)
 	{
-		//fprintf(stderr, "pa_mainloop_run() failed.\n");
 		cleanup(&cfg);
 		return EXIT_FAILURE;
 	}
