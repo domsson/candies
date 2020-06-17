@@ -224,7 +224,7 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	// Turn off buffering for stdout
+	// Make sure stdout is line buffered 
 	setlinebuf(stdout);
 
 	// Run the main loop
