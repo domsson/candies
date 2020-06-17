@@ -24,8 +24,8 @@ It can print any of the follwing information for servers running 1.4 or newer:
 Options:
 
 - `h` Print help text and exit
-- `i SECS` Query server every SECS seconds. (NOT YET IMPLEMENTED)
-- `m` Keep running, printing new info when available. (NOT YET IMPLEMENTED)
+- `i SECS` Server query interval in seconds (default: 10).
+- `m` Keep running and print after every server query.
 - `o MODE` Output mode (0 through 4, see below).
 - `p PORT` Server port (default is 25565).
 - `s` Add spaces before and after the slash (mode 0 only)
