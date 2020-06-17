@@ -1,14 +1,14 @@
 #include <stdio.h>      // NULL, fprintf(), perror(), setlinebuf()
 #include <string.h>     // strcmp(), strcasestr()
 #include <stdlib.h>     // NULL, EXIT_FAILURE, EXIT_SUCCESS
-#include <unistd.h>     // getopt() et al.
-#include <error.h>
-#include <arpa/inet.h>
+#include <unistd.h>     // getopt(), sleep()
 
 #define TCPSOCK_IMPLEMENTATION
 #include "tcpsock.h"
 
 #define DEFAULT_PORT "25565"
+#define DEFAULT_INTERVAL 10
+#define BUFFER_SIZE 128
 
 typedef unsigned char byte;
 
@@ -114,6 +114,49 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 	{
 		opts->host = argv[optind];
 	}
+}
+
+int query_info(opts_s *opts, char *buf, int len)
+{
+	int sock = tcpsock_create(TCPSOCK_IPV4);
+
+	// socket creation failed, bye bye
+	if (sock == -1)
+	{
+		return -1;
+	}
+
+	// socket connection failed, bye bye
+	if (tcpsock_connect(sock, TCPSOCK_IPV4, opts->host, opts->port) == -1)
+	{
+		return -1;
+	}
+
+	// send ping request to server
+	char msg[] = { 0xFE, 0x01 }; 
+	int sent = tcpsock_send(sock, msg, 2);
+
+	// sending failed, bye bye
+	if (sent == -1)
+	{
+		return -1;
+	}
+
+	// receive answer from server, hopefully
+	/*
+	char buf[128] = { 0 };
+	int recv = tcpsock_receive(sock, buf, 128);
+	*/
+
+	return tcpsock_receive(sock, buf, len);
+	
+	/*
+	// no data received or error, bye bye
+	if (recv <= 0)
+	{
+		return -1;
+	}
+	*/
 }
 
 // https://wiki.vg/Server_List_Ping#Server_to_client
@@ -233,58 +276,44 @@ int main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	if (opts.interval == 0)
+	{
+		opts.interval = DEFAULT_INTERVAL;
+	}
+
+	if (opts.monitor == 0)
+	{
+		opts.interval = 0;
+	}
+
 	// no host given, bye bye
 	if (opts.host == NULL)
 	{
 		return EXIT_FAILURE;
 	}
 	
-	int sock = tcpsock_create(TCPSOCK_IPV4);
-
-	// socket creation failed, bye bye
-	if (sock == -1)
-	{
-		return EXIT_FAILURE;
-	}
-
 	// no port given, use default
 	if (opts.port == NULL)
 	{
 		opts.port = DEFAULT_PORT;
 	}
 
-	// socket connection failed, bye bye
-	if (tcpsock_connect(sock, TCPSOCK_IPV4, opts.host, opts.port) == -1)
+	// do the thing (possibly more than just once)
+	char buf[BUFFER_SIZE];
+	for (int run = 1; run; run = opts.monitor)
 	{
-		return EXIT_FAILURE;
+		// query server for data
+		int recv = query_info(&opts, buf, BUFFER_SIZE);
+	
+		// extract info from received data
+		info_s info = { 0 };
+		extract_info(&info, buf, recv);
+
+		// print the requested info
+		print_info(&info, &opts);
+
+		sleep(opts.interval);
 	}
-
-	// send ping request to server
-	char msg[] = { 0xFE, 0x01 }; 
-	int sent = tcpsock_send(sock, msg, 2);
-
-	// sending failed, bye bye
-	if (sent == -1)
-	{
-		return EXIT_FAILURE;
-	}
-
-	// receive answer from server, hopefully
-	char buf[128] = { 0 };
-	int recv = tcpsock_receive(sock, buf, 128);
-
-	// no data received or error, bye bye
-	if (recv <= 0)
-	{
-		return EXIT_FAILURE;
-	}
-
-	// extract info from received data
-	info_s info = { 0 };
-	extract_info(&info, buf, recv);
-
-	// print the requested info
-	print_info(&info, &opts);
 
 	// done, bye
 	return EXIT_SUCCESS;
