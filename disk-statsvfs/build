@@ -1,1 +1,0 @@
-gcc -o bin/disk-statvfs src/disk-statvfs.c -lm
