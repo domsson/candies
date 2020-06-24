@@ -185,8 +185,8 @@ int main(int argc, char **argv)
 		interval = DEFAULT_INTERVAL;
 	}
 
-	// Disable stdout buffering
-	setbuf(stdout, NULL);
+	// make sure stdout is line buffered 
+	setlinebuf(stdout);
 
 	// Prepare string we'll need multiple times
 	const char *str_unit = unit ? DEFAULT_UNIT : "";

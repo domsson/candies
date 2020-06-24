@@ -396,8 +396,8 @@ int main(int argc, char **argv)
 		cfg.interval = 0;
 	}
 	
-	// Disable stdout buffering
-	setbuf(stdout, NULL);
+	// Make sure stdout is line buffered
+	setlinebuf(stdout);
 
 	// Loop vars
 	double temp_sum = 0.0;

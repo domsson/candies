@@ -83,8 +83,8 @@ int main(int argc, char **argv)
 		interval = DEFAULT_INTERVAL;
 	}
 
-	// Disable stdout buffering
-	setbuf(stdout, NULL);
+	// Make sure stdout is line buffered
+	setlinebuf(stdout);
 	
 	// Run endless loop, if `monitor` option given
 	if (monitor)

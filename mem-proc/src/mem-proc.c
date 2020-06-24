@@ -198,8 +198,8 @@ int main(int argc, char **argv)
 		interval = 0;
 	}
 
-	// Disable stdout buffering
-	setbuf(stdout, NULL);
+	// Make sure stdout is line buffered
+	setlinebuf(stdout);
 
 	// Prepare strings we'll need later
 	const char *str_total = STR_MEM_TOTAL;

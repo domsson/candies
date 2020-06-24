@@ -114,8 +114,8 @@ int main(int argc, char **argv)
 		interval = 0;
 	}
 	
-	// Disable stdout buffering
-	setbuf(stdout, NULL);
+	// Make sure stdout is line buffered
+	setlinebuf(stdout);
 
 	// Loop variables
 	unsigned long total = 0;
