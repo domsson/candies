@@ -11,7 +11,7 @@ to find and print the number of open issues on a given public repository.
 
 # Usage
 
-    github-issues user repo
+    github-issues <user> <repo>
 
 Example:
 
