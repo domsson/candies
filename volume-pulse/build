@@ -1,1 +1,2 @@
-gcc -g -o bin/volume-pulse src/volume-pulse.c -lpulse
+#!/bin/bash
+gcc -Wall -O3 -o bin/volume-pulse src/volume-pulse.c -lpulse

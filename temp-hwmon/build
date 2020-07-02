@@ -1,1 +1,2 @@
-gcc -o bin/temp-hwmon src/temp-hwmon.c -lm
+#!/bin/bash
+gcc -Wall -O3 -o bin/temp-hwmon src/temp-hwmon.c -lm

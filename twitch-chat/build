@@ -1,1 +1,2 @@
-gcc -g -Wall src/twitch-chat.c -o bin/twitch-chat -ltwirc 
+#!/bin/bash
+gcc -Wall -O3 -o ./bin/twitch-chat ./src/twitch-chat.c -ltwirc 

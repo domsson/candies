@@ -1,1 +1,2 @@
-gcc -g -Wall src/mc-server.c -o bin/mc-server
+#!/bin/bash
+gcc -Wall -O3 src/mc-server.c -o bin/mc-server

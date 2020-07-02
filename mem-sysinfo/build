@@ -1,1 +1,2 @@
-gcc -o bin/mem-sysinfo src/mem-sysinfo.c -lm
+#!/bin/bash
+gcc -Wall -O3 -o bin/mem-sysinfo src/mem-sysinfo.c -lm

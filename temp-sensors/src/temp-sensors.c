@@ -43,7 +43,7 @@ sensors_chip_name const *find_chip(const char *prefix)
 	int c = 0;
 
 	// Iterate over the chips
-	while(cm = sensors_get_detected_chips(NULL, &c))
+	while ((cm = sensors_get_detected_chips(NULL, &c)))
 	{
 		// Check if this is the chip the user is interested in
 		if (prefix && strstr(cm->prefix, prefix) != NULL)
@@ -64,9 +64,8 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
 	// Loop over the subfeatures
 	sensors_subfeature const *sc; // current subfeature
 	int s = 0;
-	double val = 0.0;
 
-	while(sc = sensors_get_all_subfeatures(chip, feat, &s))
+	while ((sc = sensors_get_all_subfeatures(chip, feat, &s)))
 	{
 		// Not the tempreature reading? Not interested!
 		if (sc->type != SENSORS_SUBFEATURE_TEMP_INPUT)
@@ -90,6 +89,8 @@ int get_temp_value(const sensors_chip_name *chip, const sensors_feature *feat, d
 
 		return 0;
 	}
+
+	return -1;
 }
 
 /**
@@ -102,7 +103,7 @@ void list_features(sensors_chip_name const *cm, struct config *cfg)
 	sensors_feature const *fc = NULL; // current feature
 	int f = 0;
 
-	while (fc = sensors_get_features(cm, &f))
+	while ((fc = sensors_get_features(cm, &f)))
 	{
 		// Not a temperature? Not interested!
 		if (fc->type != SENSORS_FEATURE_TEMP)
@@ -147,7 +148,7 @@ void list_chips_and_features(struct config *cfg)
 	sensors_chip_name const *cc = NULL; // current chip
 	int c = 0;
 
-	while(cc = sensors_get_detected_chips(NULL, &c))
+	while ((cc = sensors_get_detected_chips(NULL, &c)))
 	{
 		fprintf(stdout, "[C%d] %s (from %s)\n", c, cc->prefix, cc->path);
 		list_features(cc, cfg);
@@ -165,7 +166,7 @@ double determine_temp(sensors_chip_name const *cm, const char *feat, double *t, 
 
 	double curr = 0.0;
 
-	while (fc = sensors_get_features(cm, &f))
+	while ((fc = sensors_get_features(cm, &f)))
 	{
 		// Not a temperature? Not interested!
 		if (fc->type != SENSORS_FEATURE_TEMP)

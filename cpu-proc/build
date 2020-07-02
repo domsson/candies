@@ -1,1 +1,2 @@
-gcc -o bin/cpu-proc src/cpu-proc.c -lm
+#!/bin/bash
+gcc -Wall -O3 -o bin/cpu-proc src/cpu-proc.c -lm

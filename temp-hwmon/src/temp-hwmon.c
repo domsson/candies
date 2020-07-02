@@ -157,7 +157,7 @@ int list_chips_and_features(struct config *cfg)
 	struct dirent *direntry = NULL;
 	size_t c = 0;
 	
-	while (direntry = readdir(hwmon))
+	while ((direntry = readdir(hwmon)))
 	{
 		// TODO free() and fclose()/close() everything
 		//      and make sure we also do it if we return -1
@@ -205,7 +205,7 @@ int list_chips_and_features(struct config *cfg)
 		}
 
 		// Finally print the chip name
-		fprintf(stdout, "[C%d] %s (from %s)\n", c, chip_name, cfg->path);
+		fprintf(stdout, "[C%ld] %s (from %s)\n", c, chip_name, cfg->path);
 		++c;
 
 		fclose(name_file);
@@ -218,6 +218,7 @@ int list_chips_and_features(struct config *cfg)
 	}
 
 	closedir(hwmon);
+	return 0;
 }
 
 /*
@@ -400,7 +401,6 @@ int main(int argc, char **argv)
 	setlinebuf(stdout);
 
 	// Loop vars
-	double temp_sum = 0.0;
 	size_t temp_num = 0;
 	double temp_avg_prev  = -DBL_MAX;
 	double temp_avg_curr  =  0.0;
