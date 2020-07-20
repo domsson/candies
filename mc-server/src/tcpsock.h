@@ -9,6 +9,10 @@
 #include <sys/socket.h> // socket(), connect(), send(), recv()
 #include <netdb.h>      // getaddrinfo()
 
+#ifndef TCPSOCK_API
+#define TCPSOCK_API
+#endif
+
 //
 // API
 //
@@ -23,6 +27,7 @@
  * In case of error, either we failed to create a socket via socket(), or a call
  * to fcntl(), in an attempt to get or set the file descriptor flags, failed.
  */
+TCPSOCK_API
 int tcpsock_create(int ip_type);
 
 /*
@@ -33,6 +38,7 @@ int tcpsock_create(int ip_type);
  * Returns -1 if the host/port could not be translated into an IP address or if 
  * the connection could not be established for some other reason.
  */
+TCPSOCK_API
 int tcpsock_connect(int sockfd, int ip_type, const char *host, const char *port);
 
 /*
@@ -47,6 +53,7 @@ int tcpsock_connect(int sockfd, int ip_type, const char *host, const char *port)
  * Returns -1 if the socket reported an error or the socket status could not
  * be queried, both indicating that the socket is most likely not connected.
  */
+TCPSOCK_API
 int tcpsock_status(int sockfd);
 
 /*
@@ -55,6 +62,7 @@ int tcpsock_status(int sockfd);
  * On error, -1 is returned and errno is set appropriately.
  * See the man page of send() for more details.
  */
+TCPSOCK_API
 int tcpsock_send(int sockfd, const char *msg, size_t len);
 
 /*
@@ -65,6 +73,7 @@ int tcpsock_send(int sockfd, const char *msg, size_t len);
  * or if the requested number of bytes to receive from the socket was 0.
  * See the man page of recv() for more details.
  */
+TCPSOCK_API
 int tcpsock_receive(int sockfd, char *buf, size_t len);
 
 /*
@@ -72,6 +81,7 @@ int tcpsock_receive(int sockfd, char *buf, size_t len);
  * Returns 0 on success, -1 on error (see errno).
  * See the man page of close() for more details.
  */
+TCPSOCK_API
 int tcpsock_close(int sockfd);
 
 //
@@ -80,6 +90,7 @@ int tcpsock_close(int sockfd);
 
 #ifdef TCPSOCK_IMPLEMENTATION
 
+TCPSOCK_API
 int tcpsock_create(int ip_type)
 {
 	// If ip_type was neither IPv4 nor IPv6, we fall back to IPv4
@@ -102,6 +113,7 @@ int tcpsock_create(int ip_type)
 	return sfd;
 }
 
+TCPSOCK_API
 int tcpsock_connect(int sockfd, int ip_type, const char *host, const char *port)
 {
 	// If ip_type was neither IPv4 nor IPv6, we fall back to IPv4
@@ -144,6 +156,7 @@ int tcpsock_connect(int sockfd, int ip_type, const char *host, const char *port)
 	return 0;
 }
 
+TCPSOCK_API
 int tcpsock_status(int sockfd)
 {
 	int err = 0;
@@ -165,16 +178,19 @@ int tcpsock_status(int sockfd)
 	return 0;
 }
 
+TCPSOCK_API
 int tcpsock_send(int sockfd, const char *msg, size_t len)
 {
 	return send(sockfd, msg, len, 0);
 }
 
+TCPSOCK_API
 int tcpsock_receive(int sockfd, char *buf, size_t len)
 {
 	return recv(sockfd, buf, len, 0);
 }
 
+TCPSOCK_API
 int tcpsock_close(int sockfd)
 {
 	return close(sockfd);

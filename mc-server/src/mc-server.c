@@ -3,6 +3,7 @@
 #include <unistd.h>     // getopt(), sleep()
 
 #define TCPSOCK_IMPLEMENTATION
+#define TCPSOCK_API static
 #include "tcpsock.h"
 
 #define CANDIES_API static
