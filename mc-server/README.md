@@ -29,7 +29,7 @@ Options:
 - `m` Keep running and print after every server query
 - `p PORT` Server port (default is 25565)
 
-Output modes:
+Format specifiers:
 
 - `%%`: a literal `%`
 - `%p`: players online
