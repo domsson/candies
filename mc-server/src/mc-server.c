@@ -127,21 +127,9 @@ query_info(opts_s *opts, char *buf, int len)
 		return -1;
 	}
 
-	// receive answer from server, hopefully
-	/*
-	char buf[128] = { 0 };
-	int recv = tcpsock_receive(sock, buf, 128);
-	*/
-
-	return tcpsock_receive(sock, buf, len);
-	
-	/*
-	// no data received or error, bye bye
-	if (recv <= 0)
-	{
-		return -1;
-	}
-	*/
+	int recv = tcpsock_receive(sock, buf, len);
+	tcpsock_close(sock);
+	return recv;
 }
 
 // https://wiki.vg/Server_List_Ping#Server_to_client
