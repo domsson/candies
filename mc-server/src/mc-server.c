@@ -1,25 +1,19 @@
 #include <stdio.h>      // NULL, fprintf(), perror(), setlinebuf()
-#include <string.h>     // strcmp(), strcasestr()
 #include <stdlib.h>     // NULL, EXIT_FAILURE, EXIT_SUCCESS
 #include <unistd.h>     // getopt(), sleep()
 
 #define TCPSOCK_IMPLEMENTATION
 #include "tcpsock.h"
 
+#define CANDIES_API static
+#include "candies.h"
+
 #define DEFAULT_PORT "25565"
 #define DEFAULT_INTERVAL 10
 #define BUFFER_SIZE 128
+#define DEFAULT_FORMAT "%p/%s"
 
 typedef unsigned char byte;
-
-enum mode
-{
-	MODE_PLAYERS_AND_SLOTS,
-	MODE_PLAYERS,
-	MODE_SLOTS,
-	MODE_VERSION,
-	MODE_MOTD
-};
 
 typedef enum mode mode_e;
 
@@ -40,55 +34,50 @@ struct options
 	char  *port;
 	byte   help : 1;        // Print help and exit
 	byte   monitor : 1;     // Keep running, print new info when avail
-	byte   space : 1;       // Add spaces before/after the slash (mode 0)
-	mode_e mode;            // What to display?
-	int interval;           // Query server every `interval` seconds
+	int    interval;        // Query server every `interval` seconds
+	char  *format;
 };
 
 typedef struct options opts_s;
 
 /*
- * Returns 0 if str is NULL or empty, otherwise 1.
- */
-int empty(char const *str)
-{
-	return str == NULL || str[0] == '\0';
-}
-
-/*
  * Prints usage information.
  */
-void help(char *invocation)
+static void
+help(char *invocation)
 {
 	fprintf(stdout, "Usage:\n");
 	fprintf(stdout, "\t%s [OPTIONS...] server_ip\n", invocation);
 	fprintf(stdout, "\n");
 	fprintf(stdout, "Options:\n");
+	fprintf(stdout, "\t-f FORMAT\tFormat string, see below.\n");
 	fprintf(stdout, "\t-h\tPrint this help text and exit.\n");
-	fprintf(stdout, "\t-i SECS\tQuery server every SECS seconds. (NOT IMPLEMENTED)\n");
-	fprintf(stdout, "\t-m\tKeep running, printing new info when available. (NOT IMPLEMENTED)\n");
-	fprintf(stdout, "\t-o MODE\tOutput mode (0 through 4, see below).\n");
+	fprintf(stdout, "\t-i SECS\tQuery server every SECS seconds.\n");
+	fprintf(stdout, "\t-m\tKeep running, printing new info when available.\n");
 	fprintf(stdout, "\t-p PORT\tServer port (default is 25565).\n");
-	fprintf(stdout, "\t-s\tAdd spaces before and after the slash (mode 0 only).\n");
 	fprintf(stdout, "\n");
-	fprintf(stdout, "Output modes:\n");
-	fprintf(stdout, "\t0\t<players> / <slots>\n");
-	fprintf(stdout, "\t1\t<players>\n");
-	fprintf(stdout, "\t2\t<slots>\n");
-	fprintf(stdout, "\t3\t<version>\n");
-	fprintf(stdout, "\t4\t<message of the day>\n");
+	fprintf(stdout, "Format specifiers:\n");
+	fprintf(stdout, "\t%%%%\ta literal %%\n");
+	fprintf(stdout, "\t%%p\tnumber of players currently online\n");
+	fprintf(stdout, "\t%%s\tnumber of player slots available\n");
+	fprintf(stdout, "\t%%v\tserver version\n");
+	fprintf(stdout, "\t%%m\tmessage of the day\n");
 	fprintf(stdout, "\n");
 }
 
-void fetch_opts(opts_s *opts, int argc, char **argv)
+static void
+fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	// Process command line options
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "hi:mo:p:s")) != -1)
+	while ((o = getopt(argc, argv, "f:hi:mo:p:")) != -1)
 	{
 		switch(o)
 		{
+			case 'f':
+				opts->format = optarg;
+				break;
 			case 'h':
 				opts->help = 1;
 				break;
@@ -98,14 +87,8 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 			case 'm':
 				opts->monitor = 1;
 				break;
-			case 'o':
-				opts->mode = atoi(optarg);
-				break;
 			case 'p':
 				opts->port = optarg;
-				break;
-			case 's':
-				opts->space = 1;
 				break;
 		}
 	}
@@ -116,7 +99,8 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 	}
 }
 
-int query_info(opts_s *opts, char *buf, int len)
+static int
+query_info(opts_s *opts, char *buf, int len)
 {
 	int sock = tcpsock_create(TCPSOCK_IPV4);
 
@@ -161,7 +145,8 @@ int query_info(opts_s *opts, char *buf, int len)
 
 // https://wiki.vg/Server_List_Ping#Server_to_client
 // Look, it ain't pretty, but it gets the job done.
-void extract_info(info_s *info, char *buf, int len)
+static void
+extract_info(info_s *info, char *buf, int len)
 {
 	int i = 10;
 	int j = 0;
@@ -222,45 +207,39 @@ void extract_info(info_s *info, char *buf, int len)
 	}
 }
 
-void print_info(info_s *info, opts_s *opts)
+static char*
+candy_format_cb(char c, void* ctx)
 {
-	char space = opts->space ? ' ' : 0;
+	info_s* info = (info_s*) ctx;
 
-        if (opts->mode == MODE_PLAYERS_AND_SLOTS)
+	switch (c)
 	{
-		fprintf(stdout, "%s%c/%c%s\n", info->players, space, space, info->slots);
-		return;
+		case 'p':
+			return info->players;
+		case 's':
+			return info->slots;
+		case 'v':
+			return info->version;
+		case 'm':
+			return info->motd;
+		default:
+			return NULL;
 	}
+}
 
-	if (opts->mode == MODE_PLAYERS)
-	{
-		fprintf(stdout, "%s\n", info->players);
-		return;
-	}
-
-	if (opts->mode == MODE_SLOTS)
-	{
-		fprintf(stdout, "%s\n", info->slots);
-		return;
-	}
-
-	if (opts->mode == MODE_VERSION)
-	{
-		fprintf(stdout, "%s\n", info->version);
-		return;
-	}
-
-	if (opts->mode == MODE_MOTD)
-	{
-		fprintf(stdout, "%s\n", info->motd);
-		return;
-	}
+static void
+print_info(info_s *info, opts_s *opts)
+{
+	char result[BUFFER_SIZE] = { 0 };
+	candy_format(opts->format, result, BUFFER_SIZE, candy_format_cb, info);	
+	fprintf(stdout, "%s\n", result);
 }
 
 /*
  * Here be tempeh burgers!
  */
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
 	// set stdout to line buffered
 	setlinebuf(stdout);
@@ -274,6 +253,11 @@ int main(int argc, char **argv)
 	{
 		help(argv[0]);
 		return EXIT_SUCCESS;
+	}
+
+	if (opts.format == NULL)
+	{
+		opts.format = DEFAULT_FORMAT;
 	}
 
 	// if no interval given, use default
