@@ -23,20 +23,20 @@ It can print any of the follwing information for servers running 1.4 or newer:
 
 Options:
 
+- `f FORMAT` Format string, see below
 - `h` Print help text and exit
 - `i SECS` Server query interval in seconds (default: 10).
 - `m` Keep running and print after every server query.
-- `o MODE` Output mode (0 through 4, see below).
 - `p PORT` Server port (default is 25565).
 - `s` Add spaces before and after the slash (mode 0 only)
 
 Output modes:
 
-- `0`: `<players> / <slots>`
-- `1`: `<players>`
-- `2`: `<slots>`
-- `3`: `<version>`
-- `4`: `<message of the day>`
+- `%%`: a literal `%`
+- `%p`: players online
+- `%s`: slots available
+- `%v`: server version
+- `%m`: message of the day
 
 ## To do 
 
