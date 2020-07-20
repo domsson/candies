@@ -25,10 +25,9 @@ Options:
 
 - `f FORMAT` Format string, see below
 - `h` Print help text and exit
-- `i SECS` Server query interval in seconds (default: 10).
-- `m` Keep running and print after every server query.
-- `p PORT` Server port (default is 25565).
-- `s` Add spaces before and after the slash (mode 0 only)
+- `i SECS` Server query interval in seconds (default: 10)
+- `m` Keep running and print after every server query
+- `p PORT` Server port (default is 25565)
 
 Output modes:
 
