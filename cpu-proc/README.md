@@ -7,7 +7,7 @@ wrappers, like [`succade`](https://github.com/domsson/succade).
 ## Concept 
 
 The tool reads the CPU statistics from `/proc/stat` two times, with a small
-wait in between, then calculates the current CPU usage from it, as outlined in  
+wait in between, then calculates the current CPU usage from it, as outlined in 
 an [article on rosettacode](https://rosettacode.org/wiki/Linux_CPU_utilization).
 
 ## Dependencies
