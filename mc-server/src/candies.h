@@ -15,35 +15,43 @@ candy_format_cb(char c, void* ctx);
 CANDIES_API char*
 candy_format(const char* format, char *buf, size_t len, char* (*cb)(char c, void* ctx), void *ctx)
 {
-	size_t i = 0;
-	size_t b = 0;
-	size_t n = 0;
-	char *add = NULL;
+	const char *curr;  // current char from format
+	const char *next;  // next char from format
 
-	for (n = strlen(format); i < n && b < (len-1); ++i)
+	size_t i = 0;      // index into buf
+	char *ins = NULL;  // string to insert
+
+	// iterate `format`, abort once we exhaust the output buffer
+	for (; *format && i < (len-1); ++format)
 	{
-		if (format[i] == '%' && i+1 < n) 
+		curr = format;
+		next = format+1;
+
+		if (*curr == '%' && *next) 
 		{
-			if (format[i+1] == '%')
+			if (*next == '%') // escaped %, copy it over and skip
 			{
-				buf[b++] = format[++i];
+				buf[i++] = *format++;
 				continue;
 			}
-			if ((add = cb(format[i+1], ctx)))
+			if ((ins = cb(*next, ctx))) // get string to insert
 			{
-				while (*add && b < (len-1))
+				// copy string, again aborting once buffer full
+				while (*ins && i < (len-1))
 				{
-					buf[b++] = *add++;
+					buf[i++] = *ins++;
 				}
-				++i;
+				++format;
 				continue;
 			}
 		}
 	
-		buf[b++] = format[i];
+		// any other character, just copy over
+		buf[i++] = *curr;
 	}
 
-	buf[b] = '\0';
+	// null terminate
+	buf[i] = '\0';
 	return buf;
 }
 
