@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -Wall -O3 src/wmname-xcb.c -o bin/wmname-xcb -lxcb
+gcc -Wall -s -O3 src/wmname-xcb.c -o bin/wmname-xcb -lxcb
