@@ -50,7 +50,7 @@ int main(int argc, char **argv)
 	xcb_get_input_focus_cookie_t focus_cookie;
 	xcb_get_input_focus_reply_t *focus_reply;
 
-       	focus_cookie = xcb_get_input_focus_unchecked(conn);
+	focus_cookie = xcb_get_input_focus_unchecked(conn);
 	focus_reply  = xcb_get_input_focus_reply(conn, focus_cookie, NULL);
 
 	if (focus_reply == NULL)
