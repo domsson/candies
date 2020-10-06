@@ -16,8 +16,6 @@
 
 typedef unsigned char byte;
 
-typedef enum mode mode_e;
-
 struct info
 {
 	char protocol[4]; // max is "127"
