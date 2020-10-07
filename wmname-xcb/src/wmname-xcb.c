@@ -148,6 +148,11 @@ int main(int argc, char **argv)
 	// connect to the X server
 	xcb_connection_t *conn = xcb_connect(NULL, 0);
 
+	if (xcb_connection_has_error(conn))
+	{
+		return EXIT_FAILURE;
+	}
+
 	xcb_window_t f_window; // focused window
 	xcb_window_t r_window; // root window
 	xcb_window_t m_window; // manager window
