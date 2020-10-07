@@ -10,10 +10,13 @@
 #define DEFAULT_BUFFER 2048
 #define WINDOW_ID_BITS   64
 
+typedef unsigned char byte;
+
 struct options
 {
 	int buffer;
-	unsigned char root;
+	byte root : 1;
+	byte monitor : 1;
 };
 
 typedef struct options opts_s;
@@ -23,12 +26,15 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 	// Process command line options
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "b:r")) != -1)
+	while ((o = getopt(argc, argv, "b:mr")) != -1)
 	{
 		switch(o)
 		{
 			case 'b':
 				opts->buffer = atoi(optarg);
+				break;
+			case 'm':
+				opts->monitor = 1;
 				break;
 			case 'r':
 				opts->root = 1;
@@ -37,6 +43,52 @@ void fetch_opts(opts_s *opts, int argc, char **argv)
 	}
 }
 
+/*
+ * Get the property specified by `atom` from the given window `win`
+ */
+char *get_string_prop(xcb_connection_t *conn, xcb_window_t win, xcb_atom_t atom, char *buf, size_t len)
+{
+	xcb_get_property_cookie_t cookie;
+	xcb_get_property_reply_t *reply;
+
+	cookie = xcb_get_property_unchecked(conn, 0, win, atom, XCB_ATOM_ANY, 0, len / 4);
+	reply  = xcb_get_property_reply(conn, cookie, NULL);
+	
+	if (reply == NULL) return NULL;
+	
+	int val_len = xcb_get_property_value_length(reply);
+	char *value = xcb_get_property_value(reply);
+
+	if (value == NULL) return NULL;
+
+	int read = val_len > len ? len : val_len;
+	strncpy(buf, value, read);
+	buf[read - 1] = '\0'; // ensure null termination
+	free(reply);
+	return buf;
+}
+
+/*
+ * Get the (ID of the) atom with the given name
+ */
+xcb_atom_t get_atom(xcb_connection_t *conn, char *name)
+{
+	xcb_intern_atom_cookie_t cookie;
+	xcb_intern_atom_reply_t *reply;
+
+	cookie = xcb_intern_atom_unchecked(conn, 1, strlen(name), name);
+	reply  = xcb_intern_atom_reply(conn, cookie, NULL);
+
+	if (reply == NULL) return XCB_ATOM_NONE;
+
+	xcb_atom_t atom = reply->atom;
+	free(reply);
+	return atom;	
+}
+
+/*
+ * Get the ID of the currently focused window
+ */
 xcb_window_t get_focused_win(xcb_connection_t *conn)
 {
 	xcb_get_input_focus_cookie_t cookie;
@@ -52,19 +104,13 @@ xcb_window_t get_focused_win(xcb_connection_t *conn)
 	return win;
 }
 
-xcb_window_t get_root_win(xcb_connection_t *conn, xcb_window_t ref)
+/*
+ * Get the ID of the root window
+ */
+xcb_window_t get_root_win(xcb_connection_t *conn)
 {
-	xcb_query_tree_cookie_t cookie;
-	xcb_query_tree_reply_t *reply;
-
-	cookie = xcb_query_tree_unchecked(conn, ref);
-	reply  = xcb_query_tree_reply(conn, cookie, NULL);
-
-	if (reply == NULL) return XCB_WINDOW_NONE;
-
-	xcb_window_t win = reply->root;
-	free(reply);
-	return win;
+	xcb_screen_t *screen = xcb_setup_roots_iterator(xcb_get_setup(conn)).data;
+	return screen->root;
 }
 
 /*
@@ -86,48 +132,59 @@ xcb_window_t get_manager_win(xcb_connection_t *conn, xcb_window_t root, xcb_atom
 	return win;
 }
 
-/*
- * Get the property specified by `atom` from the given window `win`
- */
-char *get_string_prop(xcb_connection_t *conn, xcb_window_t win, xcb_atom_t atom, size_t buf_len)
+char *fetch_window_name(xcb_connection_t *conn, char *buf, size_t len)
 {
-	xcb_get_property_cookie_t cookie;
-	xcb_get_property_reply_t *reply;
+	xcb_window_t window; // focused window
+	xcb_atom_t   atom;   // _NET_WM_NAME
 
-	cookie = xcb_get_property_unchecked(conn, 0, win, atom, XCB_ATOM_ANY, 0, buf_len / 4);
-	reply  = xcb_get_property_reply(conn, cookie, NULL);
-	
-	if (reply == NULL) return NULL;
-	
-	int len = xcb_get_property_value_length(reply);
-	if (len == 0)
+	if ((atom = get_atom(conn, WM_NAME)) == XCB_ATOM_NONE)
 	{
-		free(reply);
 		return NULL;
 	}
 
-	char *value = xcb_get_property_value(reply);
-	char *prop = strndup(value, len);
-	free(reply);
-	return prop;
+	if ((window = get_focused_win(conn)) == XCB_WINDOW_NONE)
+	{
+		return NULL;
+	}
+	
+	return get_string_prop(conn, window, atom, buf, len);
 }
 
-/*
- * Get the (ID of the) atom with the given name
- */
-xcb_atom_t get_atom(xcb_connection_t *conn, char *name)
+char *fetch_manager_name(xcb_connection_t *conn, char *buf, size_t len)
 {
-	xcb_intern_atom_cookie_t cookie;
-	xcb_intern_atom_reply_t *reply;
+	xcb_window_t f_window; // focused window
+	xcb_window_t r_window; // root window
+	xcb_window_t m_window; // manager window
 
-	cookie = xcb_intern_atom_unchecked(conn, 1, strlen(name), name);
-	reply  = xcb_intern_atom_reply(conn, cookie, NULL);
+	xcb_atom_t name_atom;  // _NET_WM_NAME
+	xcb_atom_t check_atom; // _NET_SUPPORTING_WM_CHECK
 
-	if (reply == NULL) return XCB_ATOM_NONE;
+	if ((name_atom = get_atom(conn, WM_NAME)) == XCB_ATOM_NONE) // both
+	{
+		return NULL;
+	}
 
-	xcb_atom_t atom = reply->atom;
-	free(reply);
-	return atom;	
+	if ((f_window = get_focused_win(conn)) == XCB_WINDOW_NONE) // both
+	{
+		return NULL;
+	}
+
+	if ((check_atom = get_atom(conn, WM_CHECK)) == XCB_ATOM_NONE) // -r
+	{
+		return NULL;
+	}
+
+	if ((r_window = get_root_win(conn)) == XCB_WINDOW_NONE) // -r
+	{
+		return NULL;
+	}
+
+	if ((m_window = get_manager_win(conn, r_window, check_atom)) == XCB_WINDOW_NONE) // -r
+	{
+		return NULL;
+	}
+	
+	return get_string_prop(conn, m_window, name_atom, buf, len);
 }
 
 int main(int argc, char **argv)
@@ -153,51 +210,60 @@ int main(int argc, char **argv)
 		return EXIT_FAILURE;
 	}
 
-	xcb_window_t f_window; // focused window
-	xcb_window_t r_window; // root window
-	xcb_window_t m_window; // manager window
-
-	xcb_atom_t name_atom;  // _NET_WM_NAME
-	xcb_atom_t check_atom; // _NET_SUPPORTING_WM_CHECK
-
-	if ((name_atom = get_atom(conn, WM_NAME)) == XCB_ATOM_NONE) // both
+	// print the name of the window manager
+	if (opts.root)
 	{
-		return EXIT_FAILURE;
+		char *manager_name = malloc(opts.buffer * sizeof(char));
+		fetch_manager_name(conn, manager_name, opts.buffer);
+		fprintf(stdout, "%s\n", manager_name);
+
+		free(manager_name);
+		xcb_disconnect(conn);
+		return EXIT_SUCCESS;
 	}
 
-	if ((f_window = get_focused_win(conn)) == XCB_WINDOW_NONE) // both
+	if (opts.monitor)
 	{
-		return EXIT_FAILURE;
-	}
+		char *window_name  = malloc(opts.buffer * sizeof(char));
+		fetch_window_name(conn, window_name, opts.buffer);
+		fprintf(stdout, "%s\n", window_name);
 
-	if ((check_atom = get_atom(conn, WM_CHECK)) == XCB_ATOM_NONE) // -r
-	{
-		return EXIT_FAILURE;
-	}
+		xcb_atom_t   active_atom = get_atom(conn, "_NET_ACTIVE_WINDOW");
+		xcb_window_t root_window = get_root_win(conn);
 
-	if ((r_window = get_root_win(conn, f_window)) == XCB_WINDOW_NONE) // -r
-	{
-		return EXIT_FAILURE;
-	}
+		const uint32_t list[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
+		xcb_change_window_attributes(conn, root_window, XCB_CW_EVENT_MASK, &list);
+		xcb_flush(conn);
 
-	if ((m_window = get_manager_win(conn, r_window, check_atom)) == XCB_WINDOW_NONE) // -r
-	{
-		return EXIT_FAILURE;
-	}
-	
-	char *name = get_string_prop(conn, opts.root ? m_window : f_window, name_atom, opts.buffer);
-	if (name == NULL)
-	{
-		return EXIT_FAILURE;
-	}
-
-	fprintf(stdout, "%s\n", name);
-	free(name);
-	
-	// clean up
-	xcb_disconnect(conn);
+		xcb_generic_event_t *evt;
+		while ((evt = xcb_wait_for_event(conn)))
+		{
+			if (evt->response_type == XCB_PROPERTY_NOTIFY)
+			{
+				xcb_property_notify_event_t *e = (void *) evt;
+				if (e->atom == active_atom)
+				{
+					fetch_window_name(conn, window_name, opts.buffer);
+					fprintf(stdout, "%s\n", window_name);
+				}
+			}
+			free(evt);
+		}
 		
-	// done, bye
-	return EXIT_SUCCESS;
+		free(window_name);
+		xcb_disconnect(conn);
+		return EXIT_SUCCESS;
+	}
+
+	else
+	{
+		char *window_name = malloc(opts.buffer * sizeof(char));
+		fetch_window_name(conn, window_name, opts.buffer);
+		fprintf(stdout, "%s\n", window_name);
+		free(window_name);
+
+		xcb_disconnect(conn);
+		return EXIT_SUCCESS;
+	}
 }
 
