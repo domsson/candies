@@ -1,0 +1,2 @@
+#!/bin/bash
+gcc -Wall -s -O3 src/gtao-weather.c -o bin/gtao-weather -lm
