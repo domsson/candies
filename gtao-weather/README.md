@@ -1,7 +1,7 @@
 # gtao-weather 
 
 A small tool that prints GTA online's current time and weather to `stdout`.  
-Heavily based on the code from the [GTAWeather](https://github.com/adam10603/GTAWeather) project.
+Heavily based on the code from the [GTAWeather](https://github.com/adam10603/GTAWeather) project, although [the GTA Weather Cam](https://gtaweather.herokuapp.com/weather) also came in handy.
 
 ## Dependencies
 
