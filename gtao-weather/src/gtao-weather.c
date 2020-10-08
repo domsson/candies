@@ -232,6 +232,7 @@ void
 gta_weather_string(unsigned long long s, char *buf, size_t len)
 {
 	double weather_period = gta_weather_period(s);
+	fprintf(stderr, "gta_weather_period(%llu) = %f\n", s, weather_period);
 
 	char *ws = NULL;
 	gta_weather_s *w_prev = NULL;
@@ -248,7 +249,10 @@ gta_weather_string(unsigned long long s, char *buf, size_t len)
 			break;
 		}
 	}
-	ws = weather_string[w_last->state];
+	if (ws == NULL)
+	{
+		ws = weather_string[w_last->state];
+	}
 	snprintf(buf, len, "%s", ws);
 }
 
