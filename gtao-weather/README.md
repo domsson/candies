@@ -1,12 +1,7 @@
-# mc-server 
+# gtao-weather 
 
-This is a small utility that prints Minecraft server information to `stdout`.
-It can print any of the follwing information for servers running 1.4 or newer:
-
-- Server version
-- Server MOTD (message of the day)
-- Players currently online
-- Player slots available
+This is a small tool that prints GTA online's current time and weather `stdout`.
+It is based on the [GTAWeather](https://github.com/adam10603/GTAWeather) project.
 
 ## Dependencies
 
@@ -19,24 +14,19 @@ It can print any of the follwing information for servers running 1.4 or newer:
 
 ## Usage
 
-    mc-server [OPTIONS...] server_ip
+    gtao-weather [OPTIONS...]
 
 Options:
 
+- `b INT` Buffer size for the returned string (default: 256)
 - `f FORMAT` Format string, see below
 - `h` Print help text and exit
-- `i SECS` Server query interval in seconds (default: 10)
-- `m` Keep running and print after every server query
-- `p PORT` Server port (default is 25565)
+- `i SECS` Print every SECS seconds (in conjunction with `m`, default: 1)
+- `m` Keep running and printing
 
 Format specifiers:
 
 - `%%`: a literal `%`
-- `%p`: players online
-- `%s`: slots available
-- `%v`: server version
-- `%m`: message of the day
+- `%t`: current GTA online time (e.g. "23:45")
+- `%w`: current GTA online weather (e.g. "Mostly cloudy")
 
-## To do 
-
-- Only print if the received information has changed from the previous query
