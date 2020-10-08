@@ -233,17 +233,23 @@ gta_weather_string(unsigned long long s, char *buf, size_t len)
 {
 	double weather_period = gta_weather_period(s);
 
+	char *ws = NULL;
+	gta_weather_s *w_prev = NULL;
+	gta_weather_s *w_this = NULL;
+        gta_weather_s *w_last = &weather_states[NUM_WEATHER_STATES-1];	
+
 	for (int i = 0; i < NUM_WEATHER_STATES; ++i)
 	{
-		gta_weather_s *w_prev = &weather_states[i==0 ? NUM_WEATHER_STATES-1 : i-1];
-		gta_weather_s *w_this = &weather_states[i]; 
+		w_prev = &weather_states[i==0 ? NUM_WEATHER_STATES-1 : i-1];
+		w_this = &weather_states[i]; 
 		if (w_this->period > weather_period)
 		{
-			char *ws = weather_string[w_prev->state];
-			snprintf(buf, len, "%s", ws);
-			return;
+			ws = weather_string[w_prev->state];
+			break;
 		}
 	}
+	ws = weather_string[w_last->state];
+	snprintf(buf, len, "%s", ws);
 }
 
 void
