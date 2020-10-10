@@ -61,9 +61,16 @@ char *get_string_prop(xcb_connection_t *conn, xcb_window_t win, xcb_atom_t atom,
 
 	if (value == NULL) return NULL;
 
-	int read = val_len > len ? len : val_len;
-	strncpy(buf, value, read);
-	buf[read - 1] = '\0'; // ensure null termination
+	if (val_len >= len)
+	{
+		strncpy(buf, value, len);
+		buf[len - 1] = '\0'; // ensure null termination
+	}
+	else
+	{
+		strncpy(buf, value, val_len);
+		buf[val_len] = '\0'; // ensure null termination
+	}
 	free(reply);
 	return buf;
 }
@@ -187,6 +194,16 @@ char *fetch_manager_name(xcb_connection_t *conn, char *buf, size_t len)
 	return get_string_prop(conn, m_window, name_atom, buf, len);
 }
 
+void register_property_change_event(xcb_connection_t *conn, xcb_window_t win, int reg)
+{
+	const uint32_t list[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
+	const uint32_t none[] = { XCB_EVENT_MASK_NO_EVENT };
+	xcb_change_window_attributes(conn, win, XCB_CW_EVENT_MASK, reg ? &list : &none);
+	xcb_flush(conn);
+}
+
+
+
 int main(int argc, char **argv)
 {
 	// set stdout to line buffered
@@ -247,10 +264,10 @@ int main(int argc, char **argv)
 
 		xcb_atom_t   active_atom = get_atom(conn, "_NET_ACTIVE_WINDOW");
 		xcb_window_t root_window = get_root_win(conn);
+		//xcb_window_t curr_window = get_focused_win(conn);
 
-		const uint32_t list[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
-		xcb_change_window_attributes(conn, root_window, XCB_CW_EVENT_MASK, &list);
-		xcb_flush(conn);
+		register_property_change_event(conn, root_window, 1);
+		//register_property_change_event(conn, curr_window, 1);
 
 		xcb_generic_event_t *evt;
 		while ((evt = xcb_wait_for_event(conn)))
@@ -260,13 +277,25 @@ int main(int argc, char **argv)
 				xcb_property_notify_event_t *e = (void *) evt;
 				if (e->atom == active_atom)
 				{
+					// unregister events for the previous active window
+					//register_property_change_event(conn, curr_window, 0);
+
+					// fetch the currently active window
 					fetch_window_name(conn, window_name, opts.buffer);
 					fprintf(stdout, "%s\n", window_name);
+
+					// update the currently active window
+					//curr_window = get_focused_win(conn);
+					
+					// register events for the currently active window
+					//register_property_change_event(conn, curr_window, 1);
 				}
 			}
 			free(evt);
 		}
 		
+		register_property_change_event(conn, root_window, 0);
+		//register_property_change_event(conn, curr_window, 0);
 		free(window_name);
 		xcb_disconnect(conn);
 		return EXIT_SUCCESS;
