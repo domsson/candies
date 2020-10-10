@@ -224,6 +224,23 @@ int main(int argc, char **argv)
 
 	if (opts.monitor)
 	{
+		// TODO
+		//
+		// There is a BUG here: we're monitoring the root window for
+		// a property change. One of the properties on the root window 
+		// (hopefully) is _NET_ACTIVE_WINDOW, so we receive an event
+		// everytime the user focuses another window - which is mostly
+		// when we want to fetch/update the window name. However, if 
+		// you're in a browser and switch tabs, then there is no event 
+		// being triggered, as the _NET_ACTIVE_WINDOW property stays 
+		// the same - after all, we're still in the browser window. 
+		// Therefore, we're missing those kind of window name changes.
+		//
+		// A solution could look like this: every time the active win
+		// changes, set up an event listener for _that_ window, also 
+		// waiting for property changes. That should inform us about 
+		// a change in _NET_WM_NAME or _WM_NAME.
+
 		char *window_name  = malloc(opts.buffer * sizeof(char));
 		fetch_window_name(conn, window_name, opts.buffer);
 		fprintf(stdout, "%s\n", window_name);
