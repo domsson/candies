@@ -4,8 +4,9 @@
 #include <string.h>     // strlen()
 #include <xcb/xcb.h>
 
-#define WM_CHECK "_NET_SUPPORTING_WM_CHECK"
-#define WM_NAME  "_NET_WM_NAME"
+#define ATOM_SUPPORT_CHECK "_NET_SUPPORTING_WM_CHECK"
+#define ATOM_ACTIVE_WINDOW "_NET_ACTIVE_WINDOW"
+#define ATOM_WINDOW_NAME   "_NET_WM_NAME"
 
 #define DEFAULT_BUFFER 2048
 #define WINDOW_ID_BITS   64
@@ -144,7 +145,7 @@ char *fetch_window_name(xcb_connection_t *conn, char *buf, size_t len)
 	xcb_window_t window; // focused window
 	xcb_atom_t   atom;   // _NET_WM_NAME
 
-	if ((atom = get_atom(conn, WM_NAME)) == XCB_ATOM_NONE)
+	if ((atom = get_atom(conn, ATOM_WINDOW_NAME)) == XCB_ATOM_NONE)
 	{
 		return NULL;
 	}
@@ -166,7 +167,7 @@ char *fetch_manager_name(xcb_connection_t *conn, char *buf, size_t len)
 	xcb_atom_t name_atom;  // _NET_WM_NAME
 	xcb_atom_t check_atom; // _NET_SUPPORTING_WM_CHECK
 
-	if ((name_atom = get_atom(conn, WM_NAME)) == XCB_ATOM_NONE) // both
+	if ((name_atom = get_atom(conn, ATOM_WINDOW_NAME)) == XCB_ATOM_NONE) // both
 	{
 		return NULL;
 	}
@@ -176,7 +177,7 @@ char *fetch_manager_name(xcb_connection_t *conn, char *buf, size_t len)
 		return NULL;
 	}
 
-	if ((check_atom = get_atom(conn, WM_CHECK)) == XCB_ATOM_NONE) // -r
+	if ((check_atom = get_atom(conn, ATOM_SUPPORT_CHECK)) == XCB_ATOM_NONE) // -r
 	{
 		return NULL;
 	}
@@ -241,29 +242,12 @@ int main(int argc, char **argv)
 
 	if (opts.monitor)
 	{
-		// TODO
-		//
-		// There is a BUG here: we're monitoring the root window for
-		// a property change. One of the properties on the root window 
-		// (hopefully) is _NET_ACTIVE_WINDOW, so we receive an event
-		// everytime the user focuses another window - which is mostly
-		// when we want to fetch/update the window name. However, if 
-		// you're in a browser and switch tabs, then there is no event 
-		// being triggered, as the _NET_ACTIVE_WINDOW property stays 
-		// the same - after all, we're still in the browser window. 
-		// Therefore, we're missing those kind of window name changes.
-		//
-		// A solution could look like this: every time the active win
-		// changes, set up an event listener for _that_ window, also 
-		// waiting for property changes. That should inform us about 
-		// a change in _NET_WM_NAME or _WM_NAME.
-
 		char *window_name  = malloc(opts.buffer * sizeof(char));
 		fetch_window_name(conn, window_name, opts.buffer);
 		fprintf(stdout, "%s\n", window_name);
 
-		xcb_atom_t   active_atom = get_atom(conn, "_NET_ACTIVE_WINDOW");
-		xcb_atom_t   name_atom = get_atom(conn, "_NET_WM_NAME");
+		xcb_atom_t   active_atom = get_atom(conn, ATOM_ACTIVE_WINDOW);
+		xcb_atom_t   name_atom   = get_atom(conn, ATOM_WINDOW_NAME);
 		xcb_window_t root_window = get_root_win(conn);
 		xcb_window_t curr_window = get_focused_win(conn);
 
