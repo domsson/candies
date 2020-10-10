@@ -263,11 +263,12 @@ int main(int argc, char **argv)
 		fprintf(stdout, "%s\n", window_name);
 
 		xcb_atom_t   active_atom = get_atom(conn, "_NET_ACTIVE_WINDOW");
+		xcb_atom_t   name_atom = get_atom(conn, "_NET_WM_NAME");
 		xcb_window_t root_window = get_root_win(conn);
-		//xcb_window_t curr_window = get_focused_win(conn);
+		xcb_window_t curr_window = get_focused_win(conn);
 
 		register_property_change_event(conn, root_window, 1);
-		//register_property_change_event(conn, curr_window, 1);
+		register_property_change_event(conn, curr_window, 1);
 
 		xcb_generic_event_t *evt;
 		while ((evt = xcb_wait_for_event(conn)))
@@ -275,27 +276,39 @@ int main(int argc, char **argv)
 			if (evt->response_type == XCB_PROPERTY_NOTIFY)
 			{
 				xcb_property_notify_event_t *e = (void *) evt;
+
+				// active window changed
 				if (e->atom == active_atom)
 				{
 					// unregister events for the previous active window
-					//register_property_change_event(conn, curr_window, 0);
+					if (curr_window != XCB_WINDOW_NONE)
+						register_property_change_event(conn, curr_window, 0);
 
 					// fetch the currently active window
 					fetch_window_name(conn, window_name, opts.buffer);
 					fprintf(stdout, "%s\n", window_name);
 
 					// update the currently active window
-					//curr_window = get_focused_win(conn);
+					curr_window = get_focused_win(conn);
 					
 					// register events for the currently active window
-					//register_property_change_event(conn, curr_window, 1);
+					if (curr_window != XCB_WINDOW_NONE)
+						register_property_change_event(conn, curr_window, 1);
+				}
+				// window name change
+				else if (e->atom == name_atom)
+				{
+					// fetch the currently active window
+					fetch_window_name(conn, window_name, opts.buffer);
+					fprintf(stdout, "%s\n", window_name);
 				}
 			}
 			free(evt);
 		}
 		
 		register_property_change_event(conn, root_window, 0);
-		//register_property_change_event(conn, curr_window, 0);
+		if (curr_window != XCB_WINDOW_NONE)
+			register_property_change_event(conn, curr_window, 0);
 		free(window_name);
 		xcb_disconnect(conn);
 		return EXIT_SUCCESS;
