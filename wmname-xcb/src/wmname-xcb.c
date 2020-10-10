@@ -197,9 +197,9 @@ char *fetch_manager_name(xcb_connection_t *conn, char *buf, size_t len)
 
 void register_property_change_event(xcb_connection_t *conn, xcb_window_t win, int reg)
 {
-	const uint32_t list[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
+	const uint32_t prop[] = { XCB_EVENT_MASK_PROPERTY_CHANGE };
 	const uint32_t none[] = { XCB_EVENT_MASK_NO_EVENT };
-	xcb_change_window_attributes(conn, win, XCB_CW_EVENT_MASK, reg ? &list : &none);
+	xcb_change_window_attributes(conn, win, XCB_CW_EVENT_MASK, reg ? &prop : &none);
 	xcb_flush(conn);
 }
 
@@ -303,8 +303,8 @@ int main(int argc, char **argv)
 		char *window_name = malloc(opts.buffer * sizeof(char));
 		fetch_window_name(conn, window_name, opts.buffer);
 		fprintf(stdout, "%s\n", window_name);
-		free(window_name);
 
+		free(window_name);
 		xcb_disconnect(conn);
 		return EXIT_SUCCESS;
 	}
