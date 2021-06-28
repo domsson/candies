@@ -4,22 +4,149 @@
 #include <string.h>           // strstr(), strtok()
 #include <math.h>             // pow(), fabs()
 
-#define DEFAULT_UNIT      "%"
+#define CANDIES_API static
+#include "candies.h"
+
 #define DEFAULT_INTERVAL   1
 #define DEFAULT_THRESHOLD  1.0
 #define DEFAULT_PROCFILE  "/proc/meminfo"
+#define DEFAULT_FORMAT    "%u"
 
 #define STR_MEM_TOTAL "MemTotal"
 #define STR_MEM_FREE  "MemFree"
 #define STR_MEM_AVAIL "MemAvailable"
 
+#define OUTPUT_SIZE 128
+#define RESULT_SIZE 16
+
 typedef unsigned long ulong;
+typedef unsigned char byte;
+
+// Free  = entirely unused, completely free for use right now
+// Avail = includes reserved memory that will be freed if needed
+// Bound = reserved by other applications, can't be used at all (total - free)
+// Used  = in use, but part of it could be freed if needed (total - avail)
+struct info
+{
+	ulong total_abs;
+	ulong free_abs; 
+	ulong avail_abs;
+	ulong bound_abs;
+	ulong used_abs;
+	double total_rel;
+	double free_rel;
+	double avail_rel;
+	double bound_rel;
+	double used_rel;
+};
+
+typedef struct info info_s;
+
+struct options
+{
+	byte help : 1;
+	byte monitor : 1;      // keep running and printing
+	byte gross : 1;        // use 'free' instead of 'available' memory
+	byte space : 1;
+	byte unit : 1;
+	int interval;          // run main loop every `interval` seconds
+	int precision;         // number of decimal places in output
+	double threshold;      // minimum change in value to issue a print 
+	char *format;
+	char *file;            // file to read memory stats from
+};
+
+typedef struct options opts_s;
+
+struct context
+{
+	info_s* info;
+	opts_s* opts;
+	char buffer[RESULT_SIZE];
+};
+
+typedef struct context ctx_s;
+
+/**
+ * Process command line options into the provided options struct.
+ */
+static void
+fetch_opts(opts_s *opts, int argc, char **argv)
+{
+	opterr = 0;
+	int o;
+	while ((o = getopt(argc, argv, "hmgi:p:t:f:F:su")) != -1)
+	{
+		switch(o)
+		{
+			case 'h':
+				opts->help = 1;
+				break;
+			case 'm':
+				opts->monitor = 1;
+				break;
+			case 'g':
+				opts->gross = 1;
+				break;
+			case 'i':
+				opts->interval = atoi(optarg);
+				break;
+			case 'p':
+				opts->precision = atoi(optarg);
+				break;
+			case 't':
+				opts->precision = atof(optarg);
+				break;
+			case 'f':
+				opts->format = optarg;
+				break;
+			case 'F':
+				opts->file = optarg;
+				break;
+			case 's':
+				opts->space = 1;
+				break;
+			case 'u':
+				opts->unit = 1;
+				break;
+		}
+	}
+};
+
+/**
+ * Prints usage information.
+ */
+static void
+help(char *invocation, FILE* stream)
+{
+	fprintf(stream, "Usage:\n");
+     	fprintf(stream, "\t%s [OPTION...]\n", invocation);
+	fprintf(stream, "\n");
+	fprintf(stream, "Options:\n");
+	fprintf(stream, "\t-f FORMAT Format string, see below (default is '%%b')\n");
+	fprintf(stream, "\t-F FILE File to query for memory info; default is '/proc/meminfo`.\n");
+	fprintf(stream, "\t-h Print this help text and exit.\n");
+	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stream, "\t-s Print a space between value and unit.\n");
+	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
+	fprintf(stream, "\n");
+	fprintf(stream, "Format specifiers:\n");
+	fprintf(stream, "\t%%T and %%t: Total memory (in GiB and percent)\n");
+	fprintf(stream, "\t%%F and %%f: Free memory (in GiB and percent)\n");
+	fprintf(stream, "\t%%A and %%a: Available memory (in GiB and percent)\n");
+	fprintf(stream, "\t%%B and %%b: Bound memory (in GiB and percent)\n");
+	fprintf(stream, "\t%%U and %%u: Used memory (in GiB and percen)\n");
+}
 
 /**
  * Given a line from `/proc/meminfo` (or a file of the same format), extracts 
  * the memory value and stores it in `val`. Returns 0 on success, -1 on error.
  */
-int extract_value(char *buf, ulong *val)
+static int
+extract_value(char *buf, ulong *val)
 {
 	// Example line from `/proc/meminfo`:
 	// "MemTotal:        8199704 kB"
@@ -43,23 +170,20 @@ int extract_value(char *buf, ulong *val)
 
 /**
  * Reads the given file (expected to be `/proc/meminfo` or a file of the same 
- * format) line by line, lookign for lines beginning with `str_total` and 
- * `str_avail` respectively. If found, it tries to extract the memory value 
- * from those lines and returns them in `total` and `avail`.
- * Returns 0 if both values were extracted successfully, otherwise -1.
+ * format) line by line, looking for values of interest. If found, it tries to
+ * extract the memory values from those lines and places them into `info`.
+ * Returns 0 if all values were extracted successfully, otherwise -1.
  */
-int read_mem_stats(const char *file, ulong *total, ulong *avail, 
-		const char *str_total, const char *str_avail)
+static int
+fetch_info(info_s* info, opts_s* opts)
 {
-	FILE *fp = fopen(file, "r");
+	FILE *fp = fopen(opts->file, "r");
 	if (fp == NULL)
 	{
 		return -1;
 	}
 
-	// Keep track of what we've found (or not)
-	int found_total = 0;
-	int found_avail = 0;
+	byte found = 0;
 
 	// Read the file line by line
 	char *buf = NULL;
@@ -67,23 +191,31 @@ int read_mem_stats(const char *file, ulong *total, ulong *avail,
 	while (getline(&buf, &len, fp) != -1)
 	{
 		// Check if the line starts with `str_total`
-		if (strncmp(str_total, buf, strlen(str_total)) == 0)
+		if (strncmp(STR_MEM_TOTAL, buf, strlen(STR_MEM_TOTAL)) == 0)
 		{
-			if (extract_value(buf, total) == 0)
+			if (extract_value(buf, &info->total_abs) == 0)
 			{
-				found_total = 1;
+				++found;
 			}
 		}
 		// Check if the line starts with `str_avail`
-		else if (strncmp(str_avail, buf, strlen(str_avail)) == 0)
+		else if (strncmp(STR_MEM_AVAIL, buf, strlen(STR_MEM_AVAIL)) == 0)
 		{
-			if (extract_value(buf, avail) == 0)
+			if (extract_value(buf, &info->avail_abs) == 0)
 			{
-				found_avail = 1;
+				++found;
+			}
+		}
+		// Check if the line starts with `str_avail`
+		else if (strncmp(STR_MEM_FREE, buf, strlen(STR_MEM_FREE)) == 0)
+		{
+			if (extract_value(buf, &info->free_abs) == 0)
+			{
+				++found;
 			}
 		}
 		// We've found everything we were looking for, end the loop 
-		if (found_total && found_avail)
+		if (found == 3)
 		{
 			break;
 		}
@@ -91,124 +223,154 @@ int read_mem_stats(const char *file, ulong *total, ulong *avail,
 
 	free(buf);
 	fclose(fp);
+	
+	// Calculate all other values that we derive from those from the file
+	info->total_rel = 100;
+	info->free_rel  = ((double) info->free_abs  / (double) info->total_abs) * 100;
+	info->avail_rel = ((double) info->avail_abs / (double) info->total_abs) * 100;
 
-	return (found_total && found_avail) ? 0 : -1;
+	info->bound_abs = info->total_abs - info->free_abs;
+	info->bound_rel = ((double) info->bound_abs / (double) info->total_abs) * 100;
+
+	info->used_abs  = info->total_abs - info->avail_abs;
+	info->used_rel  = ((double) info->used_abs / (double) info->total_abs) * 100;
+
+	return (found == 3) ? 0 : -1;
 }
 
-/**
- * Prints the given `usage` value to `stdout`, including `precision` decimal 
- * places in the output. If `unit` is not empty, it will be appended and, if 
- * `space` is `1`, a single space will be inserted before the `unit` string.
- */
-void print_usage(double usage, int precision, const char *unit, int space)
+static void
+format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 {
-	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
-			space && strlen(unit) ? " " : "", unit);
+	snprintf(buf, len, "%.*lf%s%s", 
+			opts->precision,
+			val,
+			opts->space && opts->unit ? " " : "",
+		       	opts->unit ? "%" : ""
+	);
 }
 
-/**
- * Prints usage information.
- */
-void help(char *invocation)
+static void
+format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
-	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTION...]\n", invocation);
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t-f File to query for memory info; default is '/proc/meminfo`.\n");
-	fprintf(stderr, "\t-g Use 'free' (not 'available') memory to calculate usage.\n");
-	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
-	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stderr, "\t-s Print a space between value and unit.\n");
-	fprintf(stderr, "\t-t Required change in value in order to print again; default is 1.\n");
-	fprintf(stderr, "\t-u Print the appropriate unit after the value.\n");
+	snprintf(buf, len, "%.*lf%s%s", 
+			opts->precision,
+			val / 1024.0 / 1024.0, // KiB to GiB
+			opts->space && opts->unit ? " " : "",
+		       	opts->unit ? "GiB" : ""
+	);
 }
 
-int main(int argc, char **argv)
+static char*
+candy_format_cb(char c, void* context)
 {
-	int monitor = 0;        // keep running and printing
-	int interval = 0;       // run main loop every `interval` seconds
-	int unit = 0;		// also print the % unit
-	int space = 0;          // space between value and unit?
-	int precision = 0;      // number of decimal places in output
-	int gross = 0;          // use 'free' instead of 'available' memory
-	double threshold = -1;  // minimum change in value to issue a print 
-	char *file = NULL;      // file to read memory stats from
+	ctx_s* ctx = (ctx_s*) context;
 
-	// Get arguments, if any
-	opterr = 0;
-	int o;
-	while ((o = getopt(argc, argv, "f:ghi:mp:st:u")) != -1)
+	switch (c)
 	{
-		switch (o)
-		{
-			case 'f':
-				file = optarg;
-				break;
-			case 'g':
-				gross = 1;
-				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
-			case 'i':
-				interval = atoi(optarg);
-				break;
-			case 'm':
-				monitor = 1;
-				break;
-			case 'p':
-				precision = atoi(optarg);
-				break;
-			case 's':
-				space = 1;
-				break;
-			case 't':
-				threshold = atof(optarg);
-				break;
-			case 'u':
-				unit = 1;
-				break;
-		}
+		case 't':
+			format_rel_value(ctx->buffer, RESULT_SIZE,
+					ctx->info->total_rel, ctx->opts);
+			return ctx->buffer;
+		case 'a':
+			format_rel_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->avail_rel, ctx->opts);
+			return ctx->buffer;
+		case 'f':
+			format_rel_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->free_rel, ctx->opts);
+			return ctx->buffer;
+		case 'b':
+			format_rel_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->bound_rel, ctx->opts);
+			return ctx->buffer;
+		case 'u':
+			format_rel_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->used_rel, ctx->opts);
+			return ctx->buffer;
+		case 'T':
+			format_abs_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->total_abs, ctx->opts);
+			return ctx->buffer;
+		case 'A':
+			format_abs_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->avail_abs, ctx->opts);
+			return ctx->buffer;
+		case 'F':
+			format_abs_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->free_abs, ctx->opts);
+			return ctx->buffer;
+		case 'B':
+			format_abs_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->bound_abs, ctx->opts);
+			return ctx->buffer;
+		case 'U':
+			format_abs_value(ctx->buffer, RESULT_SIZE, 
+					ctx->info->used_abs, ctx->opts);
+			return ctx->buffer;
+
+		default:
+			return NULL;
+	}
+}
+
+static void
+print_info(ctx_s* ctx)
+{
+	char output[OUTPUT_SIZE] = { 0 };
+	candy_format(ctx->opts->format, output, OUTPUT_SIZE, candy_format_cb, ctx);
+	fprintf(stdout, "%s\n", output);
+}
+
+int
+main(int argc, char **argv)
+{
+	opts_s opts = { .threshold = -1 };
+	fetch_opts(&opts, argc, argv);
+
+	if (opts.help)
+	{
+		help(argv[0], stdout);
+		return EXIT_SUCCESS;
 	}
 
 	// If no file given, use the default
-	if (file == NULL)
+	if (opts.file == NULL)
 	{
-		file = DEFAULT_PROCFILE;
+		opts.file = DEFAULT_PROCFILE;
 	}
 	
 	// If no threshold given, determine it based on precision 
-	if (threshold == -1)
+	if (opts.threshold == -1)
 	{
-		threshold = DEFAULT_THRESHOLD / pow(10.0, (double) precision);
+		opts.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) opts.precision);
 	}
 	
 	// If no interval given, use the default
-	if (interval == 0)
+	if (opts.interval == 0)
 	{
-		interval = DEFAULT_INTERVAL;
+		opts.interval = DEFAULT_INTERVAL;
 	}
 
 	// Reset interval to 0 if we don't monitor
-	if (monitor == 0)
+	if (opts.monitor == 0)
 	{
-		interval = 0;
+		opts.interval = 0;
+	}
+
+	// If not format given, use the default
+	if (opts.format == NULL)
+	{
+		opts.format = DEFAULT_FORMAT;
 	}
 
 	// Make sure stdout is line buffered
 	setlinebuf(stdout);
 
-	// Prepare strings we'll need later
-	const char *str_total = STR_MEM_TOTAL;
-	const char *str_avail = gross ? STR_MEM_FREE : STR_MEM_AVAIL;
-	const char *str_unit  = unit ? DEFAULT_UNIT : "";
+	// Data structures we'll need going forward 
+	info_s info = { 0 };
+	ctx_s ctx = { .info = &info, .opts = &opts };
 
 	// Loop variables
-	ulong total = 0;
-	ulong avail = 0;
 	double usage_prev  = -1.0; // last usage value we printed (!)
 	double usage_curr  =  0.0; // current usage value
 	double usage_delta =  0.0; // difference to last printed value
@@ -216,29 +378,29 @@ int main(int argc, char **argv)
 	// do-while, because we need to run at least once either way
 	do
 	{
-	 	if (read_mem_stats(file, &total, &avail, str_total, str_avail) == -1)
+		if (fetch_info(&info, &opts) == -1)
 		{
 			return EXIT_FAILURE;
 		}
 
 		// Calculate the current usage, as well as the change
-		usage_curr  = (1 - ((double) avail / (double) total)) * 100;
+		usage_curr = opts.unit ? info.free_rel : info.avail_rel;
 		usage_delta = fabs(usage_curr - usage_prev);
 
 		// Compare the change in usage (since last print) to threshold
-		if (usage_delta >= threshold)
+		if (usage_delta >= opts.threshold)
 		{
 			// Print
-			print_usage(usage_curr, precision, str_unit, space);
-		
+			print_info(&ctx);
+
 			// Update values for next iteration
 			usage_prev = usage_curr;
 		}
 
 		// Sleep, maybe (if interval > 0)
-		sleep(interval);
+		sleep(opts.interval);
 	}
-	while (monitor);
+	while (opts.monitor);
 
 	return EXIT_SUCCESS;
 }

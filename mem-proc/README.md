@@ -8,34 +8,40 @@ wrappers, like [`succade`](https://github.com/domsson/succade).
 
 The tool gets information about the amount of total and available memory from 
 `/proc/meminfo`, then calculates the current memory usage from it. For this, it 
-looks at the values `MemTotal` and `MemAvailable`, although `MemFree` can be 
-used instead via a command-line argument, if so desired. The difference is that 
-`MemAvailable` gives a more intuitive memory usage, as it accounts for memory 
-that is currently used by Linux, but can and will be freed as soon as any 
-application needs it. Using `MemFree`, on the other hand, the tool will show a 
-higher memory usage, as that _used_ but _available_ memory will be treated as 
-if unavailable.
+looks at the values `MemTotal`, `MemAvailable` and `MemFree`. Based on these, 
+the tool will also calculate _used and _bound_ memory (see below for details).
+
+## Terminology
+
+The difference between _available_ and _free_ memory is that the former gives
+a more intuitive value. That is because _available_ memory takes into account 
+memory that is currently used by Linux, but can and will be freed as soon as 
+any application needs it. In summary:
+
+ - **Availble**: memory practically and theoretically available (via freeing)
+ - **Free**: memory practically and immediately available (without freeing)
+ - **Used**: Total - Available (memory in use by applications)
+ - **Bound**: Total - Free (memory in use by applications and Linux)
 
 ## Dependencies
 
-None.
+None (other than standard libraries and `gcc`).
 
 ## Building
 
-- Make sure `gcc` is installed
 - Run the included `build` script
 
 ## Usage
 
     mem-sysinfo [OPTIONS...]
 
-- `-f FILE` file to query for memory info; default is `/proc/meminfo`
-- `-g` show gross usage, using `MemFree` instead of `MemAvailable`
+- `-f FORMAT` format string for the output (see below); default is `%u`
+- `-F FILE` file to query for memory info; default is `/proc/meminfo`
 - `-h` print usage information, then exit
 - `-i INTERVAL` seconds between checking for a change in value; default is `1`
 - `-m` keep running and print when there is a visible change in value
 - `-p PRECISION` number of decimal digits to include in the output; default is `0`
 - `-s` print a space between the value and unit
 - `-t THRESHOLD` required change in value in order to print again; default is `1`
-- `-u` add the percentage sign (`" %"`) to the output
+- `-u` add the unit (`%` or `GiB` respectively) to the output
 
