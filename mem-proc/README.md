@@ -45,3 +45,16 @@ None (other than standard libraries and `gcc`).
 - `-t THRESHOLD` required change in value in order to print again; default is `1`
 - `-u` add the unit (`%` or `GiB` respectively) to the output
 
+### Format specifiers
+
+- `%T` total memory in GiB
+- `%A` available memory in GiB
+- `%F` free memory in GiB
+- `%U` used memory in GiB
+- `%B` bound memory in GiB
+- `%t` total memory in percent
+- `%a` available memory in percent
+- `%f` free memory in percent
+- `%u` used memory in percent
+- `%b` bound memory in percent
+
