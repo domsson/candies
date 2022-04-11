@@ -8,8 +8,60 @@
 #define DEFAULT_INTERVAL   1
 #define DEFAULT_THRESHOLD  1
 #define DEFAULT_PROCFILE  "/proc/stat"
+#define DEFAULT_FORMAT    "%u"
 
 typedef unsigned long ulong;
+typedef unsigned char byte;
+
+struct options
+{
+	byte monitor : 1;  // keep running and printing
+	byte unit : 1;	   // also print the % unit
+	byte space : 1;    // space between val and unit
+	byte help : 1;     // show help and exit
+	int interval;      // print every `interval` seconds
+	int precision;     // decimal places in output
+	double threshold;  // minimum change in value required to print
+	char *file;        // file to read CPU stats from
+};
+
+typedef struct options opts_s;
+
+static void
+fetch_opts(opts_s *opts, int argc, char **argv)
+{
+	opterr = 0;
+	int o;
+	while ((o = getopt(argc, argv, "F:hi:mp:st:u")) != -1)
+	{
+		switch (o)
+		{
+			case 'm':
+				opts->monitor = 1;
+				break;
+			case 'F':
+				opts->file = optarg;
+				break;
+			case 'i':
+				opts->interval = atoi(optarg);
+				break;
+			case 'p':
+				opts->precision = atoi(optarg);
+				break;
+			case 'u':
+				opts->unit = 1;
+				break;
+			case 's':
+				opts->space = 1;
+				break;
+			case 't':
+				opts->threshold = atof(optarg);
+				break;
+			case 'h':
+				opts->help = 1;
+		}
+	}
+}
 
 /*
  * Opens and reads the first line from the given file, which is assumed to have 
@@ -19,7 +71,8 @@ typedef unsigned long ulong;
  * the difference between them to get meaningful information regarding current 
  * CPU usage. Returns 0 on success, -1 on error (couldn't open file for read).
  */
-int read_cpu_stats(const char *file, ulong *total, ulong *idle)
+static int
+read_cpu_stats(const char *file, ulong *total, ulong *idle)
 {
 	FILE *fp = fopen(file, "r");
 	if (fp == NULL)
@@ -63,7 +116,8 @@ int read_cpu_stats(const char *file, ulong *total, ulong *idle)
  * represents the CPU usage for the timespan indirectly given by the delta that 
  * was used to calculate the given values.
  */
-double calc_usage(ulong delta_total, ulong delta_idle)
+static double
+calc_usage(ulong delta_total, ulong delta_idle)
 {
 	return (1 - ((double) delta_idle / (double) delta_total)) * 100;
 }
@@ -78,7 +132,8 @@ double calc_usage(ulong delta_total, ulong delta_idle)
  * returned CPU usage: shorter times make for a more 'current' usage, but will 
  * reduce the validity of the value and vice versa. 
  */
-double determine_usage(const char *file, int interval, ulong *total, ulong *idle)
+static double
+determine_usage(const char *file, int interval, ulong *total, ulong *idle)
 {
 	if (*total == 0 && *idle == 0)
 	{
@@ -103,7 +158,8 @@ double determine_usage(const char *file, int interval, ulong *total, ulong *idle
 	return calc_usage(delta_total, delta_idle); 
 }
 
-void print_usage(double usage, int precision, const char *unit, int space)
+static void
+print_usage(double usage, int precision, const char *unit, int space)
 {
 	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
 			space && strlen(unit) ? " " : "", unit);
@@ -112,87 +168,56 @@ void print_usage(double usage, int precision, const char *unit, int space)
 /**
  * Prints usage information.
  */
-void help(char *invocation)
+static void
+help(char *invocation, FILE* stream)
 {
-	fprintf(stderr, "Usage:\n");
-     	fprintf(stderr, "\t%s [OPTIONS...]\n", invocation);
-	fprintf(stderr, "\n");
-	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
-	fprintf(stderr, "\t-h Print this help text and exit.\n");
-	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
-	fprintf(stderr, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stderr, "\t-s Print a space between value and unit..\n");
-	fprintf(stderr, "\t-t Required change in value in order to print again; default is 1.\n");
-	fprintf(stderr, "\t-u Print the appropriate unit after the value.\n");
+	fprintf(stream, "Usage:\n");
+     	fprintf(stream, "\t%s [OPTIONS...]\n", invocation);
+	fprintf(stream, "\n");
+	fprintf(stream, "Options:\n");
+	fprintf(stream, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
+	fprintf(stream, "\t-h Print this help text and exit.\n");
+	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stream, "\t-s Print a space between value and unit..\n");
+	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
 }
 
-int main(int argc, char **argv)
+int
+main(int argc, char **argv)
 {
-	int monitor = 0;        // keep running and printing
-	int interval = 0;       // print every `interval` seconds
-	int unit = 0;		// also print the % unit
-	int space = 0;          // space between val and unit
-	int precision = 0;      // decimal places in output
-	double threshold = -1;  // minimum change in value required to print
-	char *file = NULL;      // file to read CPU stats from
+	opts_s opts = { .threshold = -1 };
+	fetch_opts(&opts, argc, argv);
 
-	// Get arguments, if any
-	opterr = 0;
-	int o;
-	while ((o = getopt(argc, argv, "F:hi:mp:st:u")) != -1)
+	if (opts.help)
 	{
-		switch (o)
-		{
-			case 'm':
-				monitor = 1;
-				break;
-			case 'F':
-				file = optarg;
-				break;
-			case 'i':
-				interval = atoi(optarg);
-				break;
-			case 'p':
-				precision = atoi(optarg);
-				break;
-			case 'u':
-				unit = 1;
-				break;
-			case 's':
-				space = 1;
-				break;
-			case 't':
-				threshold = atof(optarg);
-				break;
-			case 'h':
-				help(argv[0]);
-				return EXIT_SUCCESS;
-		}
+		help(argv[0], stdout);
+		return EXIT_SUCCESS;
 	}
 
-	if (file == NULL)
+	if (opts.file == NULL)
 	{
-		file = DEFAULT_PROCFILE;
+		opts.file = DEFAULT_PROCFILE;
 	}
 
-	if (threshold == -1)
+	if (opts.threshold == -1)
 	{
-		threshold = DEFAULT_THRESHOLD / pow(10.0, (double) precision);
+		opts.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) opts.precision);
 	}
 
-	if (interval == 0)
+	if (opts.interval == 0)
 	{
 		// We need some interval, as we need to take two measurements
-		interval = DEFAULT_INTERVAL;
+		opts.interval = DEFAULT_INTERVAL;
 	}
 
 	// make sure stdout is line buffered 
 	setlinebuf(stdout);
 
 	// Prepare string we'll need multiple times
-	const char *str_unit = unit ? DEFAULT_UNIT : "";
+	const char *str_unit = opts.unit ? DEFAULT_UNIT : "";
 
 	// Loop variables
 	ulong total   = 0;
@@ -204,23 +229,20 @@ int main(int argc, char **argv)
 	do
 	{
 		// Calculate usage (this will do the sleep internally)
-		usage_curr  = determine_usage(file, interval, &total, &idle);
+		usage_curr  = determine_usage(opts.file, opts.interval, &total, &idle);
 		usage_delta = fabs(usage_curr - usage_prev);
 
 		// Check if the value changed enough for us to print
-		if (usage_prev < 0 || usage_delta >= threshold)
+		if (usage_prev < 0 || usage_delta >= opts.threshold)
 		{
 			// Print
-			print_usage(usage_curr, precision, str_unit, space);
+			print_usage(usage_curr, opts.precision, str_unit, opts.space);
 
 			// Update values
 			usage_prev = usage_curr;
-		}
-		
-		// Sleep, maybe (if interval > 0)
-		sleep(interval);
+		}		
 	}
-	while (monitor);
+	while (opts.monitor);
 
 	return EXIT_SUCCESS;
 }
