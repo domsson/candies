@@ -23,10 +23,12 @@ None.
 
     cpu-proc [-h] [-i INTERVAL] [-m] [-p NUM] [-s] [-u]
 
-- `-h` print usage information, then exit
-- `-i` time between reads from `/proc/stat` and therefore between prints, in seconds
-- `-m` keep running and printing every second (or every INTERVAL seconds)
-- `-p` precision: number of decimals to include in the output
-- `-s` print a space between the value and unit
-- `-u` add the percentage sign (`" %"`) to the output
+- `-f FILE`: file to query for CPU info; default is `/proc/stat`
+- `-h`: print usage information, then exit
+- `-i INTERVAL`: seconds between reads from `/proc/stat`; default is `1`
+- `-m`: keep running and printing
+- `-p PRECISION`: number of decimals to include in the output
+- `-s`: print a space between the value and unit
+- `-t THRESHOLD`: prequired change in value in order to print again; default is `1`
+- `-u`: add the percentage sign (`" %"`) to the output
 
