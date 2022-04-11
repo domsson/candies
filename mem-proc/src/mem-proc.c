@@ -111,7 +111,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				break;
 		}
 	}
-};
+}
 
 /**
  * Prints usage information.
