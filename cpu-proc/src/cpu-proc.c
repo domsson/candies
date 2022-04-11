@@ -163,6 +163,9 @@ int main(int argc, char **argv)
 			case 's':
 				space = 1;
 				break;
+			case 't':
+				threshold = atof(optarg);
+				break;
 			case 'h':
 				help(argv[0]);
 				return EXIT_SUCCESS;
@@ -205,7 +208,7 @@ int main(int argc, char **argv)
 		usage_delta = fabs(usage_curr - usage_prev);
 
 		// Check if the value changed enough for us to print
-		if (usage_delta >= threshold)
+		if (usage_prev < 0 || usage_delta >= threshold)
 		{
 			// Print
 			print_usage(usage_curr, precision, str_unit, space);
@@ -213,6 +216,9 @@ int main(int argc, char **argv)
 			// Update values
 			usage_prev = usage_curr;
 		}
+		
+		// Sleep, maybe (if interval > 0)
+		sleep(interval);
 	}
 	while (monitor);
 
