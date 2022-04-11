@@ -95,7 +95,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				opts->precision = atoi(optarg);
 				break;
 			case 't':
-				opts->precision = atof(optarg);
+				opts->threshold = atof(optarg);
 				break;
 			case 'f':
 				opts->format = optarg;
