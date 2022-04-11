@@ -8,7 +8,6 @@
 #define DEFAULT_INTERVAL   1
 #define DEFAULT_THRESHOLD  1
 #define DEFAULT_PROCFILE  "/proc/stat"
-#define DEFAULT_FORMAT    "%u"
 
 typedef unsigned long ulong;
 typedef unsigned char byte;
