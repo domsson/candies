@@ -23,7 +23,7 @@ None.
 
     cpu-proc [-h] [-i INTERVAL] [-m] [-p NUM] [-s] [-u]
 
-- `-f FILE`: file to query for CPU info; default is `/proc/stat`
+- `-F FILE`: file to query for CPU info; default is `/proc/stat`
 - `-h`: print usage information, then exit
 - `-i INTERVAL`: seconds between reads from `/proc/stat`; default is `1`
 - `-m`: keep running and printing

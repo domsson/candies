@@ -118,7 +118,7 @@ void help(char *invocation)
      	fprintf(stderr, "\t%s [OPTIONS...]\n", invocation);
 	fprintf(stderr, "\n");
 	fprintf(stderr, "Options:\n");
-	fprintf(stderr, "\t-f File to query for CPU info; default is '/proc/stat'.\n");
+	fprintf(stderr, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
 	fprintf(stderr, "\t-h Print this help text and exit.\n");
 	fprintf(stderr, "\t-i Seconds between checking for a change in value; default is 1.\n");
 	fprintf(stderr, "\t-m Keep running and print when there is a notable change in value.\n"); 
@@ -141,14 +141,14 @@ int main(int argc, char **argv)
 	// Get arguments, if any
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "f:hi:mp:st:u")) != -1)
+	while ((o = getopt(argc, argv, "F:hi:mp:st:u")) != -1)
 	{
 		switch (o)
 		{
 			case 'm':
 				monitor = 1;
 				break;
-			case 'f':
+			case 'F':
 				file = optarg;
 				break;
 			case 'i':
