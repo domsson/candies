@@ -195,7 +195,15 @@ fetch_info(info_s* info, opts_s* opts)
 		{
 			if (extract_value(buf, &info->total_abs) == 0)
 			{
-				++found;
+				found |= 1;
+			}
+		}
+		// Check if the line starts with `str_free`
+		else if (strncmp(STR_MEM_FREE, buf, strlen(STR_MEM_FREE)) == 0)
+		{
+			if (extract_value(buf, &info->free_abs) == 0)
+			{
+				found |= 2;
 			}
 		}
 		// Check if the line starts with `str_avail`
@@ -203,19 +211,11 @@ fetch_info(info_s* info, opts_s* opts)
 		{
 			if (extract_value(buf, &info->avail_abs) == 0)
 			{
-				++found;
-			}
-		}
-		// Check if the line starts with `str_avail`
-		else if (strncmp(STR_MEM_FREE, buf, strlen(STR_MEM_FREE)) == 0)
-		{
-			if (extract_value(buf, &info->free_abs) == 0)
-			{
-				++found;
+				found |= 4;
 			}
 		}
 		// We've found everything we were looking for, end the loop 
-		if (found == 3)
+		if (found == 7)
 		{
 			break;
 		}
@@ -223,6 +223,13 @@ fetch_info(info_s* info, opts_s* opts)
 
 	free(buf);
 	fclose(fp);
+
+	// MemAvailable isn't supported by older kernels, so might be missing.
+	// In that case, we just fall back onto free memory.
+	if (info->avail_abs == 0)
+	{
+		info->avail_abs = info->free_abs;
+	}
 	
 	// Calculate all other values that we derive from those from the file
 	info->total_rel = 100;
@@ -235,7 +242,7 @@ fetch_info(info_s* info, opts_s* opts)
 	info->used_abs  = info->total_abs - info->avail_abs;
 	info->used_rel  = ((double) info->used_abs / (double) info->total_abs) * 100;
 
-	return (found == 3) ? 0 : -1;
+	return (found >= 3) ? 0 : -1;
 }
 
 static void
