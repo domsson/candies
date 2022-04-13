@@ -19,30 +19,6 @@
 #define OUTPUT_SIZE 128
 #define RESULT_SIZE 16
 
-#define KIBIBYTE_SIZE 1024L
-#define MEBIBYTE_SIZE KIBIBYTE_SIZE * KIBIBYTE_SIZE
-#define GIBIBYTE_SIZE MEBIBYTE_SIZE * KIBIBYTE_SIZE
-#define TEBIBYTE_SIZE GIBIBYTE_SIZE * KIBIBYTE_SIZE
-#define PEBIBYTE_SIZE TEBIBYTE_SIZE * KIBIBYTE_SIZE
-
-#define KILOBYTE_SIZE 1000L
-#define MEGABYTE_SIZE KILOBYTE_SIZE * KILOBYTE_SIZE
-#define GIGABYTE_SIZE MEGABYTE_SIZE * KILOBYTE_SIZE
-#define TERABYTE_SIZE GIGABYTE_SIZE * KILOBYTE_SIZE
-#define PETABYTE_SIZE TERABYTE_SIZE * KILOBYTE_SIZE
-
-#define KIBIBYTE_ABBR "KiB"
-#define MEBIBYTE_ABBR "MiB"
-#define GIBIBYTE_ABBR "GiB"
-#define TEBIBYTE_ABBR "TiB"
-#define PEBIBYTE_ABBR "PiB"
-
-#define KILOBYTE_ABBR "KB"
-#define MEGABYTE_ABBR "MB"
-#define GIGABYTE_ABBR "GB"
-#define TERABYTE_ABBR "TB"
-#define PETABYTE_ABBR "PB"
-
 typedef unsigned long ulong;
 typedef unsigned char byte;
 
@@ -157,34 +133,6 @@ help(char *invocation, FILE* stream)
 	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
 }
 
-static void
-set_unit(info_s* info, opts_s* opts)
-{
-	switch(opts->granularity)
-	{
-		case 'k':
-			opts->unit_size = opts->binary ? KIBIBYTE_SIZE : KILOBYTE_SIZE;
-			opts->unit_abbr = opts->binary ? KIBIBYTE_ABBR : KILOBYTE_ABBR;
-			break;
-		case 'm':
-			opts->unit_size = opts->binary ? MEBIBYTE_SIZE : MEGABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? MEBIBYTE_ABBR : MEGABYTE_ABBR;
-			break;
-		case 'g':
-			opts->unit_size = opts->binary ? GIBIBYTE_SIZE : GIGABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? GIBIBYTE_ABBR : GIGABYTE_ABBR;
-			break;
-		case 't':
-			opts->unit_size = opts->binary ? TEBIBYTE_SIZE : TERABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? TEBIBYTE_ABBR : TERABYTE_ABBR;
-			break;
-		case 'p':
-			opts->unit_size = opts->binary ? PEBIBYTE_SIZE : PETABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? PEBIBYTE_ABBR : PETABYTE_ABBR;
-			break;
-	}
-}
-
 static int
 fetch_info(info_s* info, opts_s* opts)
 {
@@ -230,10 +178,9 @@ format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 static void
 format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
-	// TODO is the data we get in KiB? KB? Bytes? MB? MiB?
 	snprintf(buf, len, "%.*lf%s%s",
 			opts->precision,
-			val / (opts->unit_size), // Bytes to GiB or GB
+			val / opts->unit_size,
 			opts->space && opts->unit ? " " : "",
 			opts->unit ? opts->unit_abbr : ""
 	);
@@ -337,7 +284,7 @@ main(int argc, char **argv)
 	ctx_s ctx = { .info = &info, .opts = &opts };
 
 	// set additional members of the opts struct based on the granularity
-	set_unit(&info, &opts);
+	candy_unit_info(opts.granularity, opts.binary, &opts.unit_size, &opts.unit_abbr);
 
 	// loop variables
 	double usage_prev  = -1.0; // last usage value we printed (!)

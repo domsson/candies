@@ -2,15 +2,17 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr(), strtok()
+#include <ctype.h>            // tolower()
 #include <math.h>             // pow(), fabs()
 
 #define CANDIES_API static
 #include "candies.h"
 
-#define DEFAULT_INTERVAL   1
-#define DEFAULT_THRESHOLD  1.0
-#define DEFAULT_PROCFILE  "/proc/meminfo"
-#define DEFAULT_FORMAT    "%u"
+#define DEFAULT_INTERVAL     1
+#define DEFAULT_THRESHOLD    1.0
+#define DEFAULT_PROCFILE    "/proc/meminfo"
+#define DEFAULT_GRANULARITY "g"
+#define DEFAULT_FORMAT      "%u"
 
 #define STR_MEM_TOTAL "MemTotal"
 #define STR_MEM_FREE  "MemFree"
@@ -46,14 +48,18 @@ struct options
 {
 	byte help : 1;
 	byte monitor : 1;      // keep running and printing
-	byte gross : 1;        // use 'free' instead of 'available' memory
 	byte space : 1;
+	byte binary : 1;       // use power-of-two instead of decimal units
 	byte unit : 1;
 	int interval;          // run main loop every `interval` seconds
 	int precision;         // number of decimal places in output
 	double threshold;      // minimum change in value to issue a print 
 	char *format;
 	char *file;            // file to read memory stats from
+	char granularity;      // unit granulairty (m = mega, g = giga, etc)
+
+	ulong unit_size;       // will be set by program
+	char *unit_abbr;       // will be set by program
 };
 
 typedef struct options opts_s;
@@ -75,10 +81,13 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "hmgi:p:t:f:F:su")) != -1)
+	while ((o = getopt(argc, argv, "bhmg:i:p:t:f:F:su")) != -1)
 	{
 		switch(o)
 		{
+			case 'b':
+				opts->binary = 1;
+				break;
 			case 'h':
 				opts->help = 1;
 				break;
@@ -86,7 +95,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				opts->monitor = 1;
 				break;
 			case 'g':
-				opts->gross = 1;
+				opts->granularity = tolower(optarg[0]);
 				break;
 			case 'i':
 				opts->interval = atoi(optarg);
@@ -183,8 +192,6 @@ fetch_info(info_s* info, opts_s* opts)
 		return -1;
 	}
 
-	byte found = 0;
-
 	// Read the file line by line
 	char *buf = NULL;
 	size_t len = 0;
@@ -193,29 +200,20 @@ fetch_info(info_s* info, opts_s* opts)
 		// Check if the line starts with `str_total`
 		if (strncmp(STR_MEM_TOTAL, buf, strlen(STR_MEM_TOTAL)) == 0)
 		{
-			if (extract_value(buf, &info->total_abs) == 0)
-			{
-				found |= 1;
-			}
+			extract_value(buf, &info->total_abs);
 		}
 		// Check if the line starts with `str_free`
 		else if (strncmp(STR_MEM_FREE, buf, strlen(STR_MEM_FREE)) == 0)
 		{
-			if (extract_value(buf, &info->free_abs) == 0)
-			{
-				found |= 2;
-			}
+			extract_value(buf, &info->free_abs);
 		}
 		// Check if the line starts with `str_avail`
 		else if (strncmp(STR_MEM_AVAIL, buf, strlen(STR_MEM_AVAIL)) == 0)
 		{
-			if (extract_value(buf, &info->avail_abs) == 0)
-			{
-				found |= 4;
-			}
+			extract_value(buf, &info->avail_abs);
 		}
 		// We've found everything we were looking for, end the loop 
-		if (found == 7)
+		if (info->total_abs && info->free_abs && info->avail_abs)
 		{
 			break;
 		}
@@ -224,8 +222,13 @@ fetch_info(info_s* info, opts_s* opts)
 	free(buf);
 	fclose(fp);
 
-	// MemAvailable isn't supported by older kernels, so might be missing.
-	// In that case, we just fall back onto free memory.
+	// Indicate error if we couldn't get the bare minimum info
+	if (info->total_abs == 0)
+	{
+		return -1;
+	}
+
+	// If MemAvailable wasn't present (older kernels), we use MemFree instead
 	if (info->avail_abs == 0)
 	{
 		info->avail_abs = info->free_abs;
@@ -242,7 +245,7 @@ fetch_info(info_s* info, opts_s* opts)
 	info->used_abs  = info->total_abs - info->avail_abs;
 	info->used_rel  = ((double) info->used_abs / (double) info->total_abs) * 100;
 
-	return (found >= 3) ? 0 : -1;
+	return 0; 
 }
 
 static void
@@ -261,9 +264,9 @@ format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s", 
 			opts->precision,
-			val / 1024.0 / 1024.0, // KiB to GiB
+			(val * 1024.0) / opts->unit_size, // KiB to bytes to user-selected unit
 			opts->space && opts->unit ? " " : "",
-		       	opts->unit ? "GiB" : ""
+		       	opts->unit ? opts->unit_abbr : ""
 	);
 }
 
@@ -320,6 +323,36 @@ candy_format_cb(char c, void* context)
 	}
 }
 
+/*
+static void
+set_unit(info_s* info, opts_s* opts)
+{
+	switch(opts->granularity)
+	{
+		case 'k':
+			opts->unit_size = opts->binary ? KIBIBYTE_SIZE : KILOBYTE_SIZE;
+			opts->unit_abbr = opts->binary ? KIBIBYTE_ABBR : KILOBYTE_ABBR;
+			break;
+		case 'm':
+			opts->unit_size = opts->binary ? MEBIBYTE_SIZE : MEGABYTE_SIZE;
+			opts->unit_abbr = opts->binary ? MEBIBYTE_ABBR : MEGABYTE_ABBR;
+			break;
+		case 'g':
+			opts->unit_size = opts->binary ? GIBIBYTE_SIZE : GIGABYTE_SIZE;
+			opts->unit_abbr = opts->binary ? GIBIBYTE_ABBR : GIGABYTE_ABBR;
+			break;
+		case 't':
+			opts->unit_size = opts->binary ? TEBIBYTE_SIZE : TERABYTE_SIZE;
+			opts->unit_abbr = opts->binary ? TEBIBYTE_ABBR : TERABYTE_ABBR;
+			break;
+		case 'p':
+			opts->unit_size = opts->binary ? PEBIBYTE_SIZE : PETABYTE_SIZE;
+			opts->unit_abbr = opts->binary ? PEBIBYTE_ABBR : PETABYTE_ABBR;
+			break;
+	}
+}
+*/
+
 static void
 print_info(ctx_s* ctx)
 {
@@ -364,6 +397,12 @@ main(int argc, char **argv)
 		opts.interval = 0;
 	}
 
+	// If no granularity given, use the default
+	if (opts.granularity == 0)
+	{
+		opts.granularity = *DEFAULT_GRANULARITY;
+	}
+
 	// If not format given, use the default
 	if (opts.format == NULL)
 	{
@@ -376,6 +415,10 @@ main(int argc, char **argv)
 	// Data structures we'll need going forward 
 	info_s info = { 0 };
 	ctx_s ctx = { .info = &info, .opts = &opts };
+
+	// Set additional options based on 'granularity'
+	//set_unit(&info, &opts);
+	candy_unit_info(opts.granularity, opts.binary, &opts.unit_size, &opts.unit_abbr);
 
 	// Loop variables
 	double usage_prev  = -1.0; // last usage value we printed (!)
