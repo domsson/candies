@@ -34,9 +34,13 @@ None, apart from standard libraries and gcc for compiling.
 
 Print CPU usage with percent sign and two decimals of precision:
 
-    ./cpu-proc -us -p 2
+    $ ./cpu-proc -us -p 2
+    3.12 %
 
 
 Print CPU usage withou decimals; print again when usage changed by 2% or more:
 
-    ./cpu-proc -m -t 2
+    $ ./cpu-proc -m -t 2
+    3
+    5
+    1
