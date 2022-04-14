@@ -19,16 +19,18 @@ None, apart from standard libraries and gcc for compiling.
 
 ## Usage
 
-    cpu-proc [-h] [-i INTERVAL] [-m] [-p NUM] [-s] [-u]
+    cpu-proc [OPTION...]
 
 - `-F FILE`: file to query for CPU info; default is `/proc/stat`
 - `-h`: print usage information, then exit
 - `-i INTERVAL`: seconds between reads from `/proc/stat`; default is `1`
+- `-k`: keep printing, regardles of threshold
 - `-m`: keep running and printing
 - `-p PRECISION`: number of decimals to include in the output
 - `-s`: print a space between the value and unit
 - `-t THRESHOLD`: prequired change in value in order to print again; default is `1`
 - `-u`: add the percentage sign (`" %"`) to the output
+- `-V`: print version info and exit
 
 ## Examples
 
@@ -44,3 +46,4 @@ Print CPU usage as whole number; print again when usage changed by 2% or more:
     3
     5
     1
+
