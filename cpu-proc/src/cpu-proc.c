@@ -4,6 +4,13 @@
 #include <string.h>           // strtok()
 #include <math.h>             // pow(), fabs()
 
+#define PROGRAM_NAME "cpu-proc"
+#define PROGRAM_URL  "https://github.com/domsson/candies/cpu-proc"
+
+#define PROGRAM_VER_MAJOR 0
+#define PROGRAM_VER_MINOR 8
+#define PROGRAM_VER_PATCH 0
+
 #define DEFAULT_UNIT      "%"
 #define DEFAULT_INTERVAL   1
 #define DEFAULT_THRESHOLD  1
@@ -14,14 +21,16 @@ typedef unsigned char byte;
 
 struct options
 {
-	byte monitor : 1;  // keep running and printing
-	byte unit : 1;	   // also print the % unit
-	byte space : 1;    // space between val and unit
-	byte help : 1;     // show help and exit
-	int interval;      // print every `interval` seconds
-	int precision;     // decimal places in output
-	double threshold;  // minimum change in value required to print
-	char *file;        // file to read CPU stats from
+	byte monitor : 1;    // keep running and printing
+	byte continuous : 1; // keep printing, regardles of threshold
+	byte unit : 1;	     // also print the % unit
+	byte space : 1;      // space between val and unit
+	byte help : 1;       // show help and exit
+	byte version : 1;    // show version info and exit
+	int interval;        // print every `interval` seconds
+	int precision;       // decimal places in output
+	double threshold;    // minimum change in value required to print
+	char *file;          // file to read CPU stats from
 };
 
 typedef struct options opts_s;
@@ -31,7 +40,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "F:hi:mp:st:u")) != -1)
+	while ((o = getopt(argc, argv, "F:hi:kmp:st:uV")) != -1)
 	{
 		switch (o)
 		{
@@ -43,6 +52,9 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				break;
 			case 'i':
 				opts->interval = atoi(optarg);
+				break;
+			case 'k':
+				opts->continuous = 1;
 				break;
 			case 'm':
 				opts->monitor = 1;
@@ -59,6 +71,9 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 'u':
 				opts->unit = 1;
 				break;
+			case 'V':
+				opts->version = 1;
+				break;
 		}
 	}
 }
@@ -73,15 +88,29 @@ help(char *invocation, FILE* stream)
      	fprintf(stream, "\t%s [OPTIONS...]\n", invocation);
 	fprintf(stream, "\n");
 	fprintf(stream, "Options:\n");
-	fprintf(stream, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
-	fprintf(stream, "\t-h Print this help text and exit.\n");
-	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
-	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stream, "\t-s Print a space between value and unit..\n");
-	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
-	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
+	fprintf(stream, "\t-F File to query for CPU info; default is '/proc/stat'\n");
+	fprintf(stream, "\t-h Print this help text and exit\n");
+	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1\n");
+	fprintf(stream, "\t-k Keep printing, even if the values haven't changed\n");
+	fprintf(stream, "\t-m Keep running and print when there is a notable change in value\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0\n");
+	fprintf(stream, "\t-s Print a space between value and unit\n");
+	fprintf(stream, "\t-t Required change in value in order to print again; default is 1\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value\n");
+	fprintf(stream, "\t-V Print version information and exit\n");
 }
+
+/*
+ * Print version information.
+ */
+static void
+version(FILE *stream)
+{
+	fprintf(stream, "%s %d.%d.%d\n%s\n", PROGRAM_NAME,
+			PROGRAM_VER_MAJOR, PROGRAM_VER_MINOR, PROGRAM_VER_PATCH,
+			PROGRAM_URL);
+}
+
 /*
  * Opens and reads the first line from the given file, which is assumed to have 
  * the format of /proc/stat and returns the total CPU time, plus the idle time
@@ -196,6 +225,12 @@ main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	if (opts.version)
+	{
+		version(stdout);
+		return EXIT_SUCCESS;
+	}
+
 	if (opts.file == NULL)
 	{
 		opts.file = DEFAULT_PROCFILE;
@@ -232,7 +267,7 @@ main(int argc, char **argv)
 		usage_delta = fabs(usage_curr - usage_prev);
 
 		// Check if the value changed enough for us to print
-		if (usage_prev < 0 || usage_delta >= opts.threshold)
+		if (opts.continuous || (usage_prev < 0 || usage_delta >= opts.threshold))
 		{
 			// Print
 			print_usage(usage_curr, opts.precision, str_unit, opts.space);
