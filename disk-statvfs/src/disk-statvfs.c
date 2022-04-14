@@ -8,6 +8,13 @@
 #define CANDIES_API static
 #include "candies.h"
 
+#define PROGRAM_NAME "disk-statvfs"
+#define PROGRAM_URL  "https://github.com/domsson/candies/disk-statvfs"
+
+#define PROGRAM_VER_MAJOR 1
+#define PROGRAM_VER_MINOR 0
+#define PROGRAM_VER_PATCH 0
+
 #define DEFAULT_PATH        "/"
 #define DEFAULT_UNIT        "%"
 #define DEFAULT_INTERVAL     10
@@ -36,19 +43,21 @@ typedef struct info info_s;
 
 struct opts
 {
-	byte help : 1;      // show help and exit
-	byte monitor : 1;   // keep running and printing
-	byte unit : 1;      // print a unit character
-	byte space : 1;     // print a space between value and unit
-	byte binary : 1;    // binary instead of decimal units (MiB vs MB etc)
-	int interval;       // interval, in seconds, to check disk space
-	int precision;      // number of decimals in output
-	char *path;         // path of a file on the desired disk/mount
+	byte help : 1;       // show help and exit
+	byte version : 1;    // show version info and exit
+	byte monitor : 1;    // keep running and printing
+	byte unit : 1;       // print a unit character
+	byte space : 1;      // print a space between value and unit
+	byte binary : 1;     // binary instead of decimal units (MiB vs MB etc)
+	byte continuous : 1; // continously print, even if no change in value
+	int interval;        // interval, in seconds, to check disk space
+	int precision;       // number of decimals in output
+	char *path;          // path of a file on the desired disk/mount
 	char *format;
-	char granularity;   // unit granularity (m = mega, g = giga, etc) 
+	char granularity;    // unit granularity (m = mega, g = giga, etc) 
 
-	ulong unit_size;    // will be set by program
-	char *unit_abbr;    // will be set by program
+	ulong unit_size;     // will be set by program
+	char *unit_abbr;     // will be set by program
 };
 
 typedef struct opts opts_s;
@@ -69,7 +78,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "bd:f:g:hi:mp:su")) != -1)
+	while ((o = getopt(argc, argv, "bd:f:g:hi:kmp:suV")) != -1)
 	{
 		switch (o)
 		{
@@ -91,6 +100,9 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 'i':
 				opts->interval = atoi(optarg);
 				break;
+			case 'k':
+				opts->continuous = 1;
+				break;
 			case 'm':
 				opts->monitor = 1;
 				break;
@@ -103,6 +115,9 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 'u':
 				opts->unit = 1;
 				break;
+			case 'V':
+				opts->version = 1;
+				break;
 		}
 	}
 }
@@ -114,16 +129,35 @@ help(char *invocation, FILE* stream)
      	fprintf(stream, "\t%s [OPTION...]\n", invocation);
 	fprintf(stream, "\n");
 	fprintf(stream, "Options:\n");
-	fprintf(stream, "\t-b Use binary instead of decimal units (Mebibyte vs Megabyte, etc).\n");
-	fprintf(stream, "\t-d Path of any file/dir on the filesystem in question; default is '/'.\n");
-	fprintf(stream, "\t-f Format string for output, default is '%%u'.\n");
-	fprintf(stream, "\t-g Granularity of unit size, 'k' for KB, 'm' for MB, etc; default is 'g'.\n");
-	fprintf(stream, "\t-h Print this help text and exit.\n");
-	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stream, "\t-m Keep running and print when there is a change in output.\n"); 
-	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stream, "\t-s Print a space between value and unit.\n");
-	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
+	fprintf(stream, "\t-b Use binary instead of decimal units\n");
+	fprintf(stream, "\t-d PATH Dir/ file to query for disk space; default is '/'\n");
+	fprintf(stream, "\t-f FORMAT Format string for output, default is '%%u'\n");
+	fprintf(stream, "\t-g GRANULARITY Value granularity (k, m, g, t, p); default is 'g'\n");
+	fprintf(stream, "\t-h Print this help text and exit\n");
+	fprintf(stream, "\t-i INTERVAL Seconds between reading disk space; default is 10\n");
+	fprintf(stream, "\t-k Keep printing even if the output hasn't changed\n");
+	fprintf(stream, "\t-m Keep running and print when there is a change in output\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0\n");
+	fprintf(stream, "\t-s Print a space between value and unit\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value\n");
+	fprintf(stream, "\t-V Print version information and exit\n");
+	fprintf(stream, "\n");
+	fprintf(stream, "Format specifiers:\n");
+	fprintf(stream, "\t%%T and %%t: Total disk space (absolute and percent)\n");
+	fprintf(stream, "\t%%F and %%f: Free disk space (absolute and percent)\n");
+	fprintf(stream, "\t%%U and %%u: Used disk space (absolute and percent)\n");
+	fprintf(stream, "\t%%A and %%a: Free disk space avail. to unprivileged users (absolute and percent)\n");
+}
+
+/*
+ * Print version information.
+ */
+static void
+version(FILE *stream)
+{
+	fprintf(stream, "%s %d.%d.%d\n%s\n", PROGRAM_NAME,
+			PROGRAM_VER_MAJOR, PROGRAM_VER_MINOR, PROGRAM_VER_PATCH,
+			PROGRAM_URL);
 }
 
 static int
@@ -234,6 +268,13 @@ main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	// show version info and exit
+	if (opts.version)
+	{
+		version(stdout);
+		return EXIT_SUCCESS;
+	}
+
 	if (opts.path == NULL)
 	{
 		opts.path = DEFAULT_PATH;
@@ -283,7 +324,7 @@ main(int argc, char **argv)
 		format_info(&ctx);
 
 		// print
-		if (strcmp(ctx.output_prev, ctx.output_curr) != 0)
+		if (opts.continuous || strcmp(ctx.output_prev, ctx.output_curr) != 0)
 		{
 			fprintf(stdout, "%s\n", ctx.output_curr);
 		}

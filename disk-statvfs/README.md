@@ -28,19 +28,17 @@ None.
 - `-g GRANULARITY` data unit size, `k` for KB, `m` for MB, etc; default is `g`
 - `-h` print usage information, then exit
 - `-i INTERVAL` seconds between checking for a change in value; default is `10`
+- `-k` keep printing even if the output hasn't changed
 - `-m` keep running and print when there is a visible change in the output 
 - `-p PRECISION` number of decimal digits to include in the output
 - `-s` print a space between the value and unit
 - `-u` add the appropriate unit to the output
+- `-V` print version information and exit
 
 ### Format specifiers
 
-- `%T` disk space total, absolute
-- `%F` disk space full, absolute
-- `%U` disk space used, absolute
-- `%A` disk space available to unprivileged users, absolute
-- `%t` disk space total, percent
-- `%f` disk space full, percent
-- `%u` disk space used, percent
-- `%a` disk space available to unprivileged users, percent
+- `%T` and `%t`: disk space total (absolute and percent)
+- `%F` and `%f`: disk space full (absolute and percent)
+- `%U` and `%u`: disk space used (absolute and percent)
+- `%A` and `%a`: disk space available to unprivileged users (absolute and percent)
 
