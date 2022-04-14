@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -Wall -O3 -o bin/mem-proc src/mem-proc.c -lm
+gcc -Wall -O3 -o bin/mem-proc src/mem-proc.c

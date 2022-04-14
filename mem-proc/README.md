@@ -33,28 +33,45 @@ None (other than standard libraries and `gcc`).
 
 ## Usage
 
-    mem-sysinfo [OPTIONS...]
+    mem-proc [OPTIONS...]
 
+- `-b` use binary instead of decimal units (MiB vs MB, etc)
 - `-f FORMAT` format string for the output (see below); default is `%u`
 - `-F FILE` file to query for memory info; default is `/proc/meminfo`
+- `-g GRANULARITY` value granularity (`k` for KB, `m` for MB, etc)
 - `-h` print usage information, then exit
-- `-i INTERVAL` seconds between checking for a change in value; default is `1`
-- `-m` keep running and print when there is a visible change in value
+- `-i INTERVAL` seconds between reading memory usage; default is `1`
+- `-k` keep printing even if the ouput hasn't changed (only in combination with `-m`)
+- `-m` keep running and print when there is a change in output
 - `-p PRECISION` number of decimal digits to include in the output; default is `0`
 - `-s` print a space between the value and unit
-- `-t THRESHOLD` required change in value in order to print again; default is `1`
 - `-u` add the unit (`%` or `GiB` respectively) to the output
 
 ### Format specifiers
 
-- `%T` total memory in GiB
-- `%A` available memory in GiB
-- `%F` free memory in GiB
-- `%U` used memory in GiB
-- `%B` bound memory in GiB
-- `%t` total memory in percent
-- `%a` available memory in percent
-- `%f` free memory in percent
-- `%u` used memory in percent
-- `%b` bound memory in percent
+- `%T` and `%t`: total memory, absolute and percent
+- `%A` and `%a`: available memory, absolute and percent
+- `%F` and `%f`: free memory, absolute and percent
+- `%U` and `%u`: used memory, absolute and percent
+- `%B` and `%b`: bound memory, absolute and percent
+
+## Examples
+
+Print the used memory in percent, with two decimal digits and unit (separated by space):
+
+    $ ./bin/mem-proc -us -p 2
+    23.11 %
+   
+Print the available memory in MiB, no decimal digits and unit (separated by space):
+
+    $ ./bin/mem-proc -us -f "%A" -g m -b
+    13280 MiB
+
+Continuously print the bound memory, in GB, with three decimals and unit (+ space):
+
+    $ ./bin/mem-proc -mus -f "%B" -p 3
+    3.988 GB
+    3.803 GB
+    3.976 GB
+    4.002 GB
 

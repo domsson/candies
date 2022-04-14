@@ -3,16 +3,21 @@
 #include <unistd.h>           // getopt() et al.
 #include <string.h>           // strstr(), strtok()
 #include <ctype.h>            // tolower()
-#include <math.h>             // pow(), fabs()
 
 #define CANDIES_API static
 #include "candies.h"
 
+#define PROGRAM_NAME "mem-proc"
+#define PROGRAM_URL  "https://github.com/domsson/candies/mem-proc"
+
+#define PROGRAM_VER_MAJOR 1
+#define PROGRAM_VER_MINOR 0
+#define PROGRAM_VER_PATCH 0
+
 #define DEFAULT_INTERVAL     1
-#define DEFAULT_THRESHOLD    1.0
 #define DEFAULT_PROCFILE    "/proc/meminfo"
 #define DEFAULT_GRANULARITY "g"
-#define DEFAULT_FORMAT      "%u"
+#define DEFAULT_FORMAT      "%b"
 
 #define STR_MEM_TOTAL "MemTotal"
 #define STR_MEM_FREE  "MemFree"
@@ -47,10 +52,12 @@ typedef struct info info_s;
 struct options
 {
 	byte help : 1;
+	byte version : 1;
 	byte monitor : 1;      // keep running and printing
 	byte space : 1;
 	byte binary : 1;       // use power-of-two instead of decimal units
 	byte unit : 1;
+	byte continuous : 1;   // keep printing even if value didn't change
 	int interval;          // run main loop every `interval` seconds
 	int precision;         // number of decimal places in output
 	double threshold;      // minimum change in value to issue a print 
@@ -69,6 +76,8 @@ struct context
 	info_s* info;
 	opts_s* opts;
 	char buffer[RESULT_SIZE];
+	char output_prev[OUTPUT_SIZE];
+	char output_curr[OUTPUT_SIZE];
 };
 
 typedef struct context ctx_s;
@@ -81,30 +90,12 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "bhmg:i:p:t:f:F:su")) != -1)
+	while ((o = getopt(argc, argv, "bhmg:i:kp:f:F:suV")) != -1)
 	{
 		switch(o)
 		{
 			case 'b':
 				opts->binary = 1;
-				break;
-			case 'h':
-				opts->help = 1;
-				break;
-			case 'm':
-				opts->monitor = 1;
-				break;
-			case 'g':
-				opts->granularity = tolower(optarg[0]);
-				break;
-			case 'i':
-				opts->interval = atoi(optarg);
-				break;
-			case 'p':
-				opts->precision = atoi(optarg);
-				break;
-			case 't':
-				opts->threshold = atof(optarg);
 				break;
 			case 'f':
 				opts->format = optarg;
@@ -112,11 +103,32 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 'F':
 				opts->file = optarg;
 				break;
+			case 'g':
+				opts->granularity = tolower(optarg[0]);
+				break;
+			case 'h':
+				opts->help = 1;
+				break;
+			case 'i':
+				opts->interval = atoi(optarg);
+				break;
+			case 'k':
+				opts->continuous = 1;
+				break;
+			case 'm':
+				opts->monitor = 1;
+				break;
+			case 'p':
+				opts->precision = atoi(optarg);
+				break;
 			case 's':
 				opts->space = 1;
 				break;
 			case 'u':
 				opts->unit = 1;
+				break;
+			case 'V':
+				opts->version = 1;
 				break;
 		}
 	}
@@ -132,22 +144,35 @@ help(char *invocation, FILE* stream)
      	fprintf(stream, "\t%s [OPTION...]\n", invocation);
 	fprintf(stream, "\n");
 	fprintf(stream, "Options:\n");
-	fprintf(stream, "\t-f FORMAT Format string, see below (default is '%%b')\n");
-	fprintf(stream, "\t-F FILE File to query for memory info; default is '/proc/meminfo`.\n");
-	fprintf(stream, "\t-h Print this help text and exit.\n");
-	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
-	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stream, "\t-s Print a space between value and unit.\n");
-	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
-	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
+	fprintf(stream, "\t-b Use binary instead of decimal units\n");
+	fprintf(stream, "\t-f FORMAT Format string, see below; default is '%%b'\n");
+	fprintf(stream, "\t-F FILE File to query for memory info; default is '/proc/meminfo'\n");
+	fprintf(stream, "\t-g GRANULARITY Value granularity (k, m, g, t, p)\n");
+	fprintf(stream, "\t-h Print this help text and exit\n");
+	fprintf(stream, "\t-i INTERVAL Seconds between reading memory usage; default is 1\n");
+	fprintf(stream, "\t-k Keep printing even if the output hasn't changed\n");
+	fprintf(stream, "\t-m Keep running and print when there is a change in output\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0\n");
+	fprintf(stream, "\t-s Print a space between value and unit\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value\n");
 	fprintf(stream, "\n");
 	fprintf(stream, "Format specifiers:\n");
-	fprintf(stream, "\t%%T and %%t: Total memory (in GiB and percent)\n");
-	fprintf(stream, "\t%%F and %%f: Free memory (in GiB and percent)\n");
-	fprintf(stream, "\t%%A and %%a: Available memory (in GiB and percent)\n");
-	fprintf(stream, "\t%%B and %%b: Bound memory (in GiB and percent)\n");
-	fprintf(stream, "\t%%U and %%u: Used memory (in GiB and percen)\n");
+	fprintf(stream, "\t%%T and %%t: Total memory (absolute and percent)\n");
+	fprintf(stream, "\t%%F and %%f: Free memory (absolute and percent)\n");
+	fprintf(stream, "\t%%A and %%a: Available memory (absolute and percent)\n");
+	fprintf(stream, "\t%%B and %%b: Bound memory (absolute and percent)\n");
+	fprintf(stream, "\t%%U and %%u: Used memory (absolute and percen)\n");
+}
+
+/*
+ * Print version information.
+ */
+static void
+version(FILE *stream)
+{
+	fprintf(stream, "%s %d.%d.%d\n%s\n", PROGRAM_NAME,
+			PROGRAM_VER_MAJOR, PROGRAM_VER_MINOR, PROGRAM_VER_PATCH,
+			PROGRAM_URL);
 }
 
 /**
@@ -233,6 +258,7 @@ fetch_info(info_s* info, opts_s* opts)
 	{
 		info->avail_abs = info->free_abs;
 	}
+
 	
 	// Calculate all other values that we derive from those from the file
 	info->total_rel = 100;
@@ -252,10 +278,10 @@ static void
 format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s", 
-			opts->precision,
-			val,
-			opts->space && opts->unit ? " " : "",
-		       	opts->unit ? "%" : ""
+		opts->precision,
+		val,
+		opts->space && opts->unit ? " " : "",
+	       	opts->unit ? "%" : ""
 	);
 }
 
@@ -263,10 +289,10 @@ static void
 format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s", 
-			opts->precision,
-			(val * 1024.0) / opts->unit_size, // KiB to bytes to user-selected unit
-			opts->space && opts->unit ? " " : "",
-		       	opts->unit ? opts->unit_abbr : ""
+		opts->precision,
+		(val * 1024.0) / opts->unit_size, // KiB to bytes to user-selected unit
+		opts->space && opts->unit ? " " : "",
+	       	opts->unit ? opts->unit_abbr : ""
 	);
 }
 
@@ -294,6 +320,7 @@ candy_format_cb(char c, void* context)
 					ctx->info->bound_rel, ctx->opts);
 			return ctx->buffer;
 		case 'u':
+
 			format_rel_value(ctx->buffer, RESULT_SIZE, 
 					ctx->info->used_rel, ctx->opts);
 			return ctx->buffer;
@@ -323,42 +350,10 @@ candy_format_cb(char c, void* context)
 	}
 }
 
-/*
 static void
-set_unit(info_s* info, opts_s* opts)
+format_info(ctx_s* ctx)
 {
-	switch(opts->granularity)
-	{
-		case 'k':
-			opts->unit_size = opts->binary ? KIBIBYTE_SIZE : KILOBYTE_SIZE;
-			opts->unit_abbr = opts->binary ? KIBIBYTE_ABBR : KILOBYTE_ABBR;
-			break;
-		case 'm':
-			opts->unit_size = opts->binary ? MEBIBYTE_SIZE : MEGABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? MEBIBYTE_ABBR : MEGABYTE_ABBR;
-			break;
-		case 'g':
-			opts->unit_size = opts->binary ? GIBIBYTE_SIZE : GIGABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? GIBIBYTE_ABBR : GIGABYTE_ABBR;
-			break;
-		case 't':
-			opts->unit_size = opts->binary ? TEBIBYTE_SIZE : TERABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? TEBIBYTE_ABBR : TERABYTE_ABBR;
-			break;
-		case 'p':
-			opts->unit_size = opts->binary ? PEBIBYTE_SIZE : PETABYTE_SIZE;
-			opts->unit_abbr = opts->binary ? PEBIBYTE_ABBR : PETABYTE_ABBR;
-			break;
-	}
-}
-*/
-
-static void
-print_info(ctx_s* ctx)
-{
-	char output[OUTPUT_SIZE] = { 0 };
-	candy_format(ctx->opts->format, output, OUTPUT_SIZE, candy_format_cb, ctx);
-	fprintf(stdout, "%s\n", output);
+	candy_format(ctx->opts->format, ctx->output_curr, OUTPUT_SIZE, candy_format_cb, ctx);
 }
 
 int
@@ -373,16 +368,16 @@ main(int argc, char **argv)
 		return EXIT_SUCCESS;
 	}
 
+	if (opts.version)
+	{
+		version(stdout);
+		return EXIT_SUCCESS;
+	}
+
 	// If no file given, use the default
 	if (opts.file == NULL)
 	{
 		opts.file = DEFAULT_PROCFILE;
-	}
-	
-	// If no threshold given, determine it based on precision 
-	if (opts.threshold == -1)
-	{
-		opts.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) opts.precision);
 	}
 	
 	// If no interval given, use the default
@@ -420,32 +415,29 @@ main(int argc, char **argv)
 	//set_unit(&info, &opts);
 	candy_unit_info(opts.granularity, opts.binary, &opts.unit_size, &opts.unit_abbr);
 
-	// Loop variables
-	double usage_prev  = -1.0; // last usage value we printed (!)
-	double usage_curr  =  0.0; // current usage value
-	double usage_delta =  0.0; // difference to last printed value
-
 	// do-while, because we need to run at least once either way
 	do
 	{
+		// Empty the gathered information, if any
+		info = (const info_s) { 0 };
+		
+		// Get the current memory usage
 		if (fetch_info(&info, &opts) == -1)
 		{
 			return EXIT_FAILURE;
 		}
 
-		// Calculate the current usage, as well as the change
-		usage_curr = opts.unit ? info.free_rel : info.avail_rel;
-		usage_delta = fabs(usage_curr - usage_prev);
+		// Formulate the final output string based on opts.format
+		format_info(&ctx);
 
-		// Compare the change in usage (since last print) to threshold
-		if (usage_delta >= opts.threshold)
+		// Print
+		if (opts.continuous || strcmp(ctx.output_prev, ctx.output_curr) != 0)
 		{
-			// Print
-			print_info(&ctx);
-
-			// Update values for next iteration
-			usage_prev = usage_curr;
+			fprintf(stdout, "%s\n", ctx.output_curr);
 		}
+		
+		// Update values for next iteration
+		strcpy(ctx.output_prev, ctx.output_curr);
 
 		// Sleep, maybe (if interval > 0)
 		sleep(opts.interval);
