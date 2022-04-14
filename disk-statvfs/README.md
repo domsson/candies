@@ -31,7 +31,7 @@ None.
 - `-m` keep running and print when there is a visible change in the output 
 - `-p PRECISION` number of decimal digits to include in the output
 - `-s` print a space between the value and unit
-- `-u` add the percentage sign (`" %"`) to the output
+- `-u` add the appropriate unit to the output
 
 ### Format specifiers
 
