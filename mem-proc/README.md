@@ -46,6 +46,7 @@ None (other than standard libraries and `gcc`).
 - `-p PRECISION` number of decimal digits to include in the output; default is `0`
 - `-s` print a space between the value and unit
 - `-u` add the unit (`%` or `GiB` respectively) to the output
+- `-V` print version information and exit
 
 ### Format specifiers
 

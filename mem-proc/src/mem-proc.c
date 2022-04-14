@@ -155,6 +155,7 @@ help(char *invocation, FILE* stream)
 	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0\n");
 	fprintf(stream, "\t-s Print a space between value and unit\n");
 	fprintf(stream, "\t-u Print the appropriate unit after the value\n");
+	fprintf(stream, "\t-V Print version information and exit\n");
 	fprintf(stream, "\n");
 	fprintf(stream, "Format specifiers:\n");
 	fprintf(stream, "\t%%T and %%t: Total memory (absolute and percent)\n");
