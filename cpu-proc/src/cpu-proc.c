@@ -35,20 +35,20 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 	{
 		switch (o)
 		{
-			case 'm':
-				opts->monitor = 1;
-				break;
 			case 'F':
 				opts->file = optarg;
+				break;
+			case 'h':
+				opts->help = 1;
 				break;
 			case 'i':
 				opts->interval = atoi(optarg);
 				break;
+			case 'm':
+				opts->monitor = 1;
+				break;
 			case 'p':
 				opts->precision = atoi(optarg);
-				break;
-			case 'u':
-				opts->unit = 1;
 				break;
 			case 's':
 				opts->space = 1;
@@ -56,12 +56,32 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 't':
 				opts->threshold = atof(optarg);
 				break;
-			case 'h':
-				opts->help = 1;
+			case 'u':
+				opts->unit = 1;
+				break;
 		}
 	}
 }
 
+/**
+ * Prints usage information.
+ */
+static void
+help(char *invocation, FILE* stream)
+{
+	fprintf(stream, "Usage:\n");
+     	fprintf(stream, "\t%s [OPTIONS...]\n", invocation);
+	fprintf(stream, "\n");
+	fprintf(stream, "Options:\n");
+	fprintf(stream, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
+	fprintf(stream, "\t-h Print this help text and exit.\n");
+	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
+	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
+	fprintf(stream, "\t-s Print a space between value and unit..\n");
+	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
+	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
+}
 /*
  * Opens and reads the first line from the given file, which is assumed to have 
  * the format of /proc/stat and returns the total CPU time, plus the idle time
@@ -162,26 +182,6 @@ print_usage(double usage, int precision, const char *unit, int space)
 {
 	fprintf(stdout, "%.*lf%s%s\n", precision, usage,
 			space && strlen(unit) ? " " : "", unit);
-}
-
-/**
- * Prints usage information.
- */
-static void
-help(char *invocation, FILE* stream)
-{
-	fprintf(stream, "Usage:\n");
-     	fprintf(stream, "\t%s [OPTIONS...]\n", invocation);
-	fprintf(stream, "\n");
-	fprintf(stream, "Options:\n");
-	fprintf(stream, "\t-F File to query for CPU info; default is '/proc/stat'.\n");
-	fprintf(stream, "\t-h Print this help text and exit.\n");
-	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
-	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
-	fprintf(stream, "\t-s Print a space between value and unit..\n");
-	fprintf(stream, "\t-t Required change in value in order to print again; default is 1.\n");
-	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
 }
 
 int

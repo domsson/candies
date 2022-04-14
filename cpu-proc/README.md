@@ -1,8 +1,6 @@
 # cpu-proc 
 
-This is a small utility that tries to print the current CPU usage to `stdout`.
-It is intended to be used with status bars like `Lemonbar` and/or their 
-wrappers, like [`succade`](https://github.com/domsson/succade).
+This is a small utility that tries to print the current CPU usage to `stdout`. For continous monitoring, there is no need to run the tool over and over again, just use `-m` instead.
 
 ## Concept 
 
@@ -12,11 +10,11 @@ an [article on rosettacode](https://rosettacode.org/wiki/Linux_CPU_utilization).
 
 ## Dependencies
 
-None.
+None, apart from standard libraries and gcc for compiling.
 
 ## Building
 
-- Make sure `gcc` are installed
+- Make sure `gcc` is installed
 - Run the included `build` script
 
 ## Usage
@@ -32,3 +30,13 @@ None.
 - `-t THRESHOLD`: prequired change in value in order to print again; default is `1`
 - `-u`: add the percentage sign (`" %"`) to the output
 
+## Examples
+
+Print CPU usage with percent sign and two decimals of precision:
+
+    ./cpu-proc -us -p 2
+
+
+Print CPU usage withou decimals; print again when usage changed by 2% or more:
+
+    ./cpu-proc -m -t 2
