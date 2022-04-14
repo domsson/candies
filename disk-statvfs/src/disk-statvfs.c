@@ -40,7 +40,6 @@ struct opts
 	byte monitor : 1;   // keep running and printing
 	byte unit : 1;      // print a unit character
 	byte space : 1;     // print a space between value and unit
-	byte available : 1; // print available, not free disk space 
 	byte binary : 1;    // binary instead of decimal units (MiB vs MB etc)
 	int interval;       // interval, in seconds, to check disk space
 	int precision;      // number of decimals in output
@@ -70,13 +69,10 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "abd:f:g:hi:mp:su")) != -1)
+	while ((o = getopt(argc, argv, "bd:f:g:hi:mp:su")) != -1)
 	{
 		switch (o)
 		{
-			case 'a':
-				opts->available = 1;
-				break;
 			case 'b':
 				opts->binary = 1;
 				break;
@@ -118,9 +114,10 @@ help(char *invocation, FILE* stream)
      	fprintf(stream, "\t%s [OPTION...]\n", invocation);
 	fprintf(stream, "\n");
 	fprintf(stream, "Options:\n");
-	fprintf(stream, "\t-a Calculate space available to unprivilidged users, not free space.\n");
-	fprintf(stream, "\t-d Path of any file/dir on the filesystem in question.\n");
-	fprintf(stream, "\t-f Format string for output.\n");
+	fprintf(stream, "\t-b Use binary instead of decimal units (Mebibyte vs Megabyte, etc).\n");
+	fprintf(stream, "\t-d Path of any file/dir on the filesystem in question; default is '/'.\n");
+	fprintf(stream, "\t-f Format string for output, default is '%%u'.\n");
+	fprintf(stream, "\t-g Granularity of unit size, 'k' for KB, 'm' for MB, etc; default is 'g'.\n");
 	fprintf(stream, "\t-h Print this help text and exit.\n");
 	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
 	fprintf(stream, "\t-m Keep running and print when there is a change in output.\n"); 
