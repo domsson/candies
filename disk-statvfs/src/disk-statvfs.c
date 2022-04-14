@@ -2,8 +2,7 @@
 #include <stdlib.h>           // NULL, EXIT_*
 #include <unistd.h>           // getopt() et al.
 #include <ctype.h>            // tolower()
-#include <string.h>           // strstr()
-#include <math.h>             // pow(), fabs()
+#include <string.h>           // strstr(), strcpy(), strcmp()
 #include <sys/statvfs.h>      // statvfs()
 
 #define CANDIES_API static
@@ -12,7 +11,6 @@
 #define DEFAULT_PATH        "/"
 #define DEFAULT_UNIT        "%"
 #define DEFAULT_INTERVAL     10
-#define DEFAULT_THRESHOLD    1.0
 #define DEFAULT_GRANULARITY "g"
 #define DEFAULT_FORMAT      "%u"
 
@@ -46,7 +44,6 @@ struct opts
 	byte binary : 1;    // binary instead of decimal units (MiB vs MB etc)
 	int interval;       // interval, in seconds, to check disk space
 	int precision;      // number of decimals in output
-	double threshold;   // minimum change in value to print again
 	char *path;         // path of a file on the desired disk/mount
 	char *format;
 	char granularity;   // unit granularity (m = mega, g = giga, etc) 
@@ -62,6 +59,8 @@ struct context
 	info_s* info;
 	opts_s* opts;
 	char buffer[RESULT_SIZE];
+	char output_prev[OUTPUT_SIZE];
+	char output_curr[OUTPUT_SIZE];
 };
 
 typedef struct context ctx_s;
@@ -71,7 +70,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "abd:f:g:hi:mp:st:u")) != -1)
+	while ((o = getopt(argc, argv, "abd:f:g:hi:mp:su")) != -1)
 	{
 		switch (o)
 		{
@@ -105,9 +104,6 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 			case 's':
 				opts->space = 1;
 				break;
-			case 't':
-				opts->threshold = atof(optarg);
-				break;
 			case 'u':
 				opts->unit = 1;
 				break;
@@ -124,12 +120,12 @@ help(char *invocation, FILE* stream)
 	fprintf(stream, "Options:\n");
 	fprintf(stream, "\t-a Calculate space available to unprivilidged users, not free space.\n");
 	fprintf(stream, "\t-d Path of any file/dir on the filesystem in question.\n");
+	fprintf(stream, "\t-f Format string for output.\n");
 	fprintf(stream, "\t-h Print this help text and exit.\n");
 	fprintf(stream, "\t-i Seconds between checking for a change in value; default is 1.\n");
-	fprintf(stream, "\t-m Keep running and print when there is a notable change in value.\n"); 
+	fprintf(stream, "\t-m Keep running and print when there is a change in output.\n"); 
 	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0.\n");
 	fprintf(stream, "\t-s Print a space between value and unit.\n");
-	fprintf(stream, "\t-t Requried change in value in order to print again; default is 1.\n");
 	fprintf(stream, "\t-u Print the appropriate unit after the value.\n");
 }
 
@@ -157,21 +153,19 @@ fetch_info(info_s* info, opts_s* opts)
 }
 
 static void
-print_info(ctx_s* ctx)
+format_info(ctx_s* ctx)
 {
-	char output[OUTPUT_SIZE] = { 0 };
-	candy_format(ctx->opts->format, output, OUTPUT_SIZE, candy_format_cb, ctx);
-	fprintf(stdout, "%s\n", output);
+	candy_format(ctx->opts->format, ctx->output_curr, OUTPUT_SIZE, candy_format_cb, ctx);
 }
 
 static void
 format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s",
-			opts->precision,
-			val,
-			opts->space && opts->unit ? " " : "",
-			opts->unit ? "%" : ""
+		opts->precision,
+		val,
+		opts->space && opts->unit ? " " : "",
+		opts->unit ? "%" : ""
 	);
 }
 
@@ -179,10 +173,10 @@ static void
 format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s",
-			opts->precision,
-			val / opts->unit_size,
-			opts->space && opts->unit ? " " : "",
-			opts->unit ? opts->unit_abbr : ""
+		opts->precision,
+		val / opts->unit_size,
+		opts->space && opts->unit ? " " : "",
+		opts->unit ? opts->unit_abbr : ""
 	);
 }
 
@@ -258,12 +252,6 @@ main(int argc, char **argv)
 		opts.granularity = *DEFAULT_GRANULARITY;
 	}
 
-	// if no threshold given, determine it based on precision
-	if (opts.threshold == -1)
-	{
-		opts.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) opts.precision);
-	}
-
 	// if no interval given, use the default
 	if (opts.interval == 0)
 	{
@@ -286,30 +274,25 @@ main(int argc, char **argv)
 	// set additional members of the opts struct based on the granularity
 	candy_unit_info(opts.granularity, opts.binary, &opts.unit_size, &opts.unit_abbr);
 
-	// loop variables
-	double usage_prev  = -1.0; // last usage value we printed (!)
-	double usage_curr  =  0.0; // current usage value
-	double usage_delta =  0.0; // difference to last printed value
-
 	do
 	{
+		// fetch the disk usage and place it in the info struct
 		if (fetch_info(&info, &opts) == -1)
 		{
 			return EXIT_FAILURE;
 		}
 		
-		// calculate current disk usage, as well as the difference
-		usage_curr  = info.free_rel;
-		usage_delta = fabs(usage_curr - usage_prev);
+		// formulate the final output string based on opts->format
+		format_info(&ctx);
 
-		if (usage_delta >= opts.threshold)
+		// print
+		if (strcmp(ctx.output_prev, ctx.output_curr) != 0)
 		{
-			// print
-			print_info(&ctx);
-
-			// update values for next iteration
-			usage_prev = usage_curr;
+			fprintf(stdout, "%s\n", ctx.output_curr);
 		}
+		
+		// update values for next iteration
+		strcpy(ctx.output_prev, ctx.output_curr);
 		
 		// sleep, maybe (if interval > 0)
 		sleep(opts.interval);

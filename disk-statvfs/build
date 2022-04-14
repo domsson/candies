@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -Wall -O3 -o bin/disk-statvfs src/disk-statvfs.c -lm
+gcc -Wall -O3 -o bin/disk-statvfs src/disk-statvfs.c
