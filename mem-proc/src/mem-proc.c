@@ -147,7 +147,7 @@ help(char *invocation, FILE* stream)
 	fprintf(stream, "\t-b Use binary instead of decimal units\n");
 	fprintf(stream, "\t-f FORMAT Format string, see below; default is '%%b'\n");
 	fprintf(stream, "\t-F FILE File to query for memory info; default is '/proc/meminfo'\n");
-	fprintf(stream, "\t-g GRANULARITY Value granularity (k, m, g, t, p)\n");
+	fprintf(stream, "\t-g GRANULARITY Value granularity (k, m, g, t, p); default is 'g'\n");
 	fprintf(stream, "\t-h Print this help text and exit\n");
 	fprintf(stream, "\t-i INTERVAL Seconds between reading memory usage; default is 1\n");
 	fprintf(stream, "\t-k Keep printing even if the output hasn't changed\n");
