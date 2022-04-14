@@ -58,7 +58,7 @@ None (other than standard libraries and `gcc`).
 
 ## Examples
 
-Print the used memory in percent, with two decimal digits and space-separated unit:
+Print the bound memory in percent, with two decimal digits and space-separated unit:
 
     $ ./bin/mem-proc -us -p 2
     23.11 %
@@ -68,9 +68,9 @@ Print the available memory in MiB, with space-separated unit but no decimal digi
     $ ./bin/mem-proc -us -f "%A" -g m -b
     13280 MiB
 
-Continuously print the bound memory, in GB, with three decimals and space-separated unit:
+Continuously print the used memory, in GB, with three decimals and space-separated unit:
 
-    $ ./bin/mem-proc -mus -f "%B" -p 3
+    $ ./bin/mem-proc -mus -f "%U" -p 3
     3.988 GB
     3.803 GB
     3.976 GB
