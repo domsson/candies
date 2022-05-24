@@ -198,8 +198,8 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 		read_file_to_var(opts->tx_file, tx_prev);
 	}
 
-	printf("rx_prev = %lu\n", *rx_prev);
-	printf("tx_prev = %lu\n", *tx_prev);
+	//printf("rx_prev = %lu\n", *rx_prev);
+	//printf("tx_prev = %lu\n", *tx_prev);
 
 	sleep(opts->interval);
 	
@@ -213,8 +213,8 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 	ulong delta_rx = rx_curr - *rx_prev;
 	ulong delta_tx = tx_curr - *tx_prev;
 
-	//printf("delta_rx = %lu\n", delta_rx);
-	//printf("delta_tx = %lu\n", delta_tx);
+	printf("delta_rx = %lu\n", delta_rx);
+	printf("delta_tx = %lu\n", delta_tx);
 
 	*rx_prev = rx_curr;
 	*tx_prev = tx_curr;
@@ -224,11 +224,15 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 	info->cx_abs = info->rx_abs + info->tx_abs;
 	info->rx_rel = (info->rx_abs / (double) DEFAULT_MAX_SPEED) * 100.0;
 	info->tx_rel = (info->tx_abs / (double) DEFAULT_MAX_SPEED) * 100.0;
-	info->cx_rel = (info->cx_abs / (double) DEFAULT_MAX_SPEED) * 200.0;
-	//printf("rx_abs = %lu\n", info->rx_abs);
-	//printf("tx_abs = %lu\n", info->tx_abs);
-	//printf("rx_rel = %lf\n", info->rx_rel);
-	//printf("tx_rel = %lf\n", info->tx_rel);
+	info->cx_rel = info->rx_rel + info->tx_rel; 
+	/*
+	printf("rx_abs = %lu\n", info->rx_abs);
+	printf("tx_abs = %lu\n", info->tx_abs);
+	printf("cx_abs = %lu\n", info->cx_abs);
+	printf("rx_rel = %lf\n", info->rx_rel);
+	printf("tx_rel = %lf\n", info->tx_rel);
+	printf("cx_rel = %lf\n", info->cx_rel);
+	*/
 
 	return 0;
 }
@@ -238,7 +242,7 @@ format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s",
 		opts->precision,
-		val,
+		val * 8, // bytes to bits
 		opts->space && opts->unit ? " " : "",
 	       	opts->unit ? "%" : ""
 	);
@@ -249,7 +253,7 @@ format_abs_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s",
 		opts->precision,
-		val / (double) opts->unit_size, // bytes to user-selected unit
+		(val * 8) / (double) opts->unit_size, // bytes to bits to user-selected unit
 		opts->space && opts->unit ? " " : "",
 	       	opts->unit ? opts->unit_abbr : ""
 	);
@@ -365,7 +369,7 @@ main(int argc, char **argv)
 	info_s info = { 0 };
 	ctx_s ctx = { .info = &info, .opts = &opts };
 
-	candy_unit_info_bits(opts.granularity, 0, &opts.unit_size, &opts.unit_abbr);
+	candy_unit_info(opts.granularity, 1, 0, &opts.unit_size, &opts.unit_abbr);
 
 	// soymeat
 	ulong rx = 0;

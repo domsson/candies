@@ -8,29 +8,29 @@
 #include <stddef.h>     // NULL
 #include <string.h>     // strlen()
 
-#define KIBI_MULT 1024U
-#define MEBI_MULT KIBI_MULT * KIBI_MULT
-#define GIBI_MULT MEBI_MULT * MEBI_MULT
-#define TEBI_MULT GIBI_MULT * GIBI_MULT
-#define PEBI_MULT TEBI_MULT * TEBI_MULT
-
 #define KILO_MULT 1000U
 #define MEGA_MULT KILO_MULT * KILO_MULT
-#define GIGA_MULT MEGA_MULT * MEGA_MULT
-#define TERA_MULT GIGA_MULT * GIGA_MULT
-#define PETA_MULT TERA_MULT * TERA_MULT
+#define GIGA_MULT MEGA_MULT * KILO_MULT
+#define TERA_MULT GIGA_MULT * KILO_MULT
+#define PETA_MULT TERA_MULT * KILO_MULT
+
+#define KIBI_MULT 1024U
+#define MEBI_MULT KIBI_MULT * KIBI_MULT
+#define GIBI_MULT MEBI_MULT * KIBI_MULT
+#define TEBI_MULT GIBI_MULT * KIBI_MULT
+#define PEBI_MULT TEBI_MULT * KIBI_MULT
+
+#define KILOBYTE_ABBR "kB"
+#define MEGABYTE_ABBR "MB"
+#define GIGABYTE_ABBR "GB"
+#define TERABYTE_ABBR "TB"
+#define PETABYTE_ABBR "PB"
 
 #define KIBIBYTE_ABBR "KiB"
 #define MEBIBYTE_ABBR "MiB"
 #define GIBIBYTE_ABBR "GiB"
 #define TEBIBYTE_ABBR "TiB"
 #define PEBIBYTE_ABBR "PiB"
-
-#define KILOBYTE_ABBR "KB"
-#define MEGABYTE_ABBR "MB"
-#define GIGABYTE_ABBR "GB"
-#define TERABYTE_ABBR "TB"
-#define PETABYTE_ABBR "PB"
 
 #define KILOBIT_ABBR "kbit"
 #define MEGABIT_ABBR "Mbit"
@@ -91,57 +91,29 @@ candy_format(const char* format, char *buf, size_t len, char* (*cb)(char c, void
 }
 
 CANDIES_API void
-candy_unit_info_bytes(char granularity, unsigned char binary, unsigned long* size, char** abbr)
+candy_unit_info(char granularity, unsigned char bits, unsigned char binary, unsigned long* size, char** abbr)
 {
 	switch (granularity)
 	{
 		case 'k':
-			*size = binary ? KIBI_MULT     : KILO_MULT;
-			*abbr = binary ? KIBIBYTE_ABBR : KILOBYTE_ABBR;
+			*size = binary ? KIBI_MULT : KILO_MULT;
+			*abbr = binary ? (bits ? KIBIBIT_ABBR : KIBIBYTE_ABBR) : (bits ? KILOBIT_ABBR : KILOBYTE_ABBR);
 			break;
 		case 'm':
-			*size = binary ? MEBI_MULT     : MEGA_MULT;
-			*abbr = binary ? MEBIBYTE_ABBR : MEGABYTE_ABBR;
+			*size = binary ? MEBI_MULT : MEGA_MULT;
+			*abbr = binary ? (bits ? MEBIBIT_ABBR : MEBIBYTE_ABBR) : (bits ? MEGABIT_ABBR : MEGABYTE_ABBR);
 			break;
 		case 'g':
-			*size = binary ? GIBI_MULT     : GIGA_MULT;
-			*abbr = binary ? GIBIBYTE_ABBR : GIGABYTE_ABBR;
+			*size = binary ? GIBI_MULT : GIGA_MULT;
+			*abbr = binary ? (bits ? GIBIBIT_ABBR : GIBIBYTE_ABBR) : (bits ? GIGABIT_ABBR : GIGABYTE_ABBR);
 			break;
 		case 't':
-			*size = binary ? TEBI_MULT     : TERA_MULT;
-			*abbr = binary ? TEBIBYTE_ABBR : TERABYTE_ABBR;
+			*size = binary ? TEBI_MULT : TERA_MULT;
+			*abbr = binary ? (bits ? TEBIBIT_ABBR : TEBIBYTE_ABBR) : (bits ? TERABIT_ABBR : TERABYTE_ABBR);
 			break;
 		case 'p':
-			*size = binary ? PEBI_MULT     : PETA_MULT;
-			*abbr = binary ? PEBIBYTE_ABBR : PETABYTE_ABBR;
-			break;
-	}
-}
-
-CANDIES_API void
-candy_unit_info_bits(char granularity, unsigned char binary, unsigned long* size, char** abbr)
-{
-	switch (granularity)
-	{
-		case 'k':
-			*size = binary ? KIBI_MULT    : KILO_MULT;
-			*abbr = binary ? KIBIBIT_ABBR : KILOBIT_ABBR;
-			break;
-		case 'm':
-			*size = binary ? MEBI_MULT    : MEGA_MULT;
-			*abbr = binary ? MEBIBIT_ABBR : MEGABIT_ABBR;
-			break;
-		case 'g':
-			*size = binary ? GIBI_MULT    : GIGA_MULT;
-			*abbr = binary ? GIBIBIT_ABBR : GIGABIT_ABBR;
-			break;
-		case 't':
-			*size = binary ? TEBI_MULT    : TERA_MULT;
-			*abbr = binary ? TEBIBIT_ABBR : TERABIT_ABBR;
-			break;
-		case 'p':
-			*size = binary ? PEBI_MULT    : PETA_MULT;
-			*abbr = binary ? PEBIBIT_ABBR : PETABIT_ABBR;
+			*size = binary ? PEBI_MULT : PETA_MULT;
+			*abbr = binary ? (bits ? PEBIBIT_ABBR : PEBIBYTE_ABBR) : (bits ? PETABIT_ABBR : PETABYTE_ABBR);
 			break;
 	}
 }
