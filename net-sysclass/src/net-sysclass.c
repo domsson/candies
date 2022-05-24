@@ -365,7 +365,7 @@ main(int argc, char **argv)
 	info_s info = { 0 };
 	ctx_s ctx = { .info = &info, .opts = &opts };
 
-	candy_unit_info(opts.granularity, 0, &opts.unit_size, &opts.unit_abbr);
+	candy_unit_info_bits(opts.granularity, 0, &opts.unit_size, &opts.unit_abbr);
 
 	// soymeat
 	ulong rx = 0;
