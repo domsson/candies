@@ -58,7 +58,6 @@ struct options
 	int interval;        // print every `interval` seconds
 	int precision;       // decimal places in output
 	int nic_mbps;        // network interface card max speed in Mbps
-	double threshold;    // minimum change in value required to print
 	char granularity;    // unit granularity (m = mega, g = giga, etc)
 	char *iface;         // network interface to query
 	char *format;        // format string
@@ -89,7 +88,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "f:g:hi:I:kmp:r:st:uV")) != -1)
+	while ((o = getopt(argc, argv, "f:g:hi:I:kmp:r:suV")) != -1)
 	{
 		switch (o)
 		{
@@ -122,9 +121,6 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				break;
 			case 's':
 				opts->space = 1;
-				break;
-			case 't':
-				opts->threshold = atof(optarg);
 				break;
 			case 'u':
 				opts->unit = 1;
