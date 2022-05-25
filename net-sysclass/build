@@ -1,2 +1,2 @@
 #!/bin/bash
-gcc -Wall -O3 -o bin/net-sysclass src/net-sysclass.c -lm
+gcc -Wall -O3 -o bin/net-sysclass src/net-sysclass.c 

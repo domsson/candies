@@ -3,7 +3,6 @@
 #include <unistd.h>           // getopt() et al., access()
 #include <string.h>           // strtok()
 #include <ctype.h>            // tolower()
-#include <math.h>             // pow(), fabs()
 
 #define CANDIES_API static
 #include "candies.h"
@@ -50,7 +49,7 @@ typedef struct info info_s;
 struct options
 {
 	byte monitor : 1;    // keep running and printing
-	byte continuous : 1; // keep printing, regardles of threshold
+	byte continuous : 1; // keep printing even if output hasn't changed 
 	byte unit : 1;	     // also print the % unit
 	byte space : 1;      // space between val and unit
 	byte help : 1;       // show help and exit
@@ -298,7 +297,7 @@ format_info(ctx_s* ctx)
 int
 main(int argc, char **argv)
 {
-	opts_s opts = { .threshold = -1 };
+	opts_s opts = { 0 };
 	fetch_opts(&opts, argc, argv);
 
 	if (opts.help)
@@ -316,11 +315,6 @@ main(int argc, char **argv)
 	if (opts.iface == NULL)
 	{
 		return EXIT_FAILURE;
-	}
-
-	if (opts.threshold == -1)
-	{
-		opts.threshold = DEFAULT_THRESHOLD / pow(10.0, (double) opts.precision);
 	}
 
 	if (opts.interval == 0)
