@@ -12,13 +12,13 @@
 #define PROGRAM_URL  "https://github.com/domsson/candies/net-sysclass"
 
 #define PROGRAM_VER_MAJOR 0
-#define PROGRAM_VER_MINOR 1
+#define PROGRAM_VER_MINOR 2
 #define PROGRAM_VER_PATCH 0
 
 #define DEFAULT_INTERVAL     1
 #define DEFAULT_THRESHOLD    1
 #define DEFAULT_GRANULARITY "k"
-#define DEFAULT_MAX_SPEED    12500000 // max iface speed in bytes (100 Mbit = 0.1 Gbit)
+#define DEFAULT_NIC_MBPS     100 // max iface speed in Mbits (100 Mbit = 0.1 Gbit)
 #define DEFAULT_FORMAT      "%c" 
 
 #define STATS_FILE_FORMAT "/sys/class/net/%s/statistics/%s"
@@ -57,6 +57,7 @@ struct options
 	byte version : 1;    // show version info and exit
 	int interval;        // print every `interval` seconds
 	int precision;       // decimal places in output
+	int nic_mbps;        // network interface card max speed in Mbps
 	double threshold;    // minimum change in value required to print
 	char granularity;    // unit granularity (m = mega, g = giga, etc)
 	char *iface;         // network interface to query
@@ -88,7 +89,7 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 {
 	opterr = 0;
 	int o;
-	while ((o = getopt(argc, argv, "f:g:hi:I:kmp:st:uV")) != -1)
+	while ((o = getopt(argc, argv, "f:g:hi:I:kmp:r:st:uV")) != -1)
 	{
 		switch (o)
 		{
@@ -115,6 +116,9 @@ fetch_opts(opts_s *opts, int argc, char **argv)
 				break;
 			case 'p':
 				opts->precision = atoi(optarg);
+				break;
+			case 'r':
+				opts->nic_mbps = atoi(optarg);
 				break;
 			case 's':
 				opts->space = 1;
@@ -149,6 +153,7 @@ help(char *invocation, FILE* stream)
 	fprintf(stream, "\t-k Keep printing, even if the values haven't changed\n");
 	fprintf(stream, "\t-m Keep running and print when there is a notable change in value\n"); 
 	fprintf(stream, "\t-p Number of decimal digits in the output; default is 0\n");
+	fprintf(stream, "\t-r Speed rating of the network adapter in Mbit/s (100, 1000, ...)\n");
 	fprintf(stream, "\t-s Print a space between value and unit\n");
 	fprintf(stream, "\t-t Required change in value in order to print again; default is 1\n");
 	fprintf(stream, "\t-u Print the appropriate unit after the value\n");
@@ -198,9 +203,6 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 		read_file_to_var(opts->tx_file, tx_prev);
 	}
 
-	//printf("rx_prev = %lu\n", *rx_prev);
-	//printf("tx_prev = %lu\n", *tx_prev);
-
 	sleep(opts->interval);
 	
 	ulong rx_curr = 0;
@@ -213,27 +215,23 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 	ulong delta_rx = rx_curr - *rx_prev;
 	ulong delta_tx = tx_curr - *tx_prev;
 
-	printf("delta_rx = %lu\n", delta_rx);
-	printf("delta_tx = %lu\n", delta_tx);
-
 	*rx_prev = rx_curr;
 	*tx_prev = tx_curr;
 
+	// absolute values in bytes
 	info->rx_abs = (ulong) (delta_rx / (float) opts->interval);
 	info->tx_abs = (ulong) (delta_tx / (float) opts->interval);
 	info->cx_abs = info->rx_abs + info->tx_abs;
-	info->rx_rel = (info->rx_abs / (double) DEFAULT_MAX_SPEED) * 100.0;
-	info->tx_rel = (info->tx_abs / (double) DEFAULT_MAX_SPEED) * 100.0;
-	info->cx_rel = info->rx_rel + info->tx_rel; 
-	/*
-	printf("rx_abs = %lu\n", info->rx_abs);
-	printf("tx_abs = %lu\n", info->tx_abs);
-	printf("cx_abs = %lu\n", info->cx_abs);
-	printf("rx_rel = %lf\n", info->rx_rel);
-	printf("tx_rel = %lf\n", info->tx_rel);
-	printf("cx_rel = %lf\n", info->cx_rel);
-	*/
 
+	// bytes to Mbits
+	double rx_abs_mbit = (info->rx_abs * 8.0) / 1000000.0;
+	double tx_abs_mbit = (info->tx_abs * 8.0) / 1000000.0;
+
+	// relative values in percent of NIC max throughput
+	info->rx_rel = (rx_abs_mbit / (double) opts->nic_mbps) * 100.0;
+	info->tx_rel = (tx_abs_mbit / (double) opts->nic_mbps) * 100.0;
+	info->cx_rel = info->rx_rel + info->tx_rel; 
+	
 	return 0;
 }
 
@@ -242,7 +240,7 @@ format_rel_value(char *buf, size_t len, double val, opts_s* opts)
 {
 	snprintf(buf, len, "%.*lf%s%s",
 		opts->precision,
-		val * 8, // bytes to bits
+		val,
 		opts->space && opts->unit ? " " : "",
 	       	opts->unit ? "%" : ""
 	);
@@ -335,6 +333,11 @@ main(int argc, char **argv)
 		opts.interval = DEFAULT_INTERVAL;
 	}
 
+	if (opts.nic_mbps == 0)
+	{
+		opts.nic_mbps = DEFAULT_NIC_MBPS;
+	}
+
 	// if no granularity given, use the default
 	if (opts.granularity == 0)
 	{
@@ -391,6 +394,8 @@ main(int argc, char **argv)
 		{
 			fprintf(stdout, "%s\n", ctx.output_curr);
 		}
+
+		strcpy(ctx.output_prev, ctx.output_curr);
 	}
 	while (opts.monitor);
 
