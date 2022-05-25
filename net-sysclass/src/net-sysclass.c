@@ -221,11 +221,12 @@ fetch_info(opts_s* opts, info_s* info, ulong* rx_prev, ulong* tx_prev)
 	// bytes to Mbits
 	double rx_abs_mbit = (info->rx_abs * 8.0) / 1000000.0;
 	double tx_abs_mbit = (info->tx_abs * 8.0) / 1000000.0;
+	double cx_abs_mbit = (info->cx_abs * 8.0) / 1000000.0;
 
 	// relative values in percent of NIC max throughput
 	info->rx_rel = (rx_abs_mbit / (double) opts->nic_mbps) * 100.0;
 	info->tx_rel = (tx_abs_mbit / (double) opts->nic_mbps) * 100.0;
-	info->cx_rel = info->rx_rel + info->tx_rel; 
+	info->cx_rel = (cx_abs_mbit / ((double) opts->nic_mbps * 2)) * 100.0; 
 	
 	return 0;
 }
