@@ -1,38 +1,48 @@
 # candies
 
-A collection of simple programs and scripts that can print some (system) information to `stdout`.   
-Examples for such information would be CPU usage, CPU temperature, volume level and battery level.
+A collection of lightweight programs and scripts that can print some 
+(system) information to `stdout`. Examples for such information would be 
+CPU usage, CPU temperature, volume level and battery level and similar.
 
-These can then be used to gather and/or pipe information to a status bar like Lemonbar.  
-Personally, I use these for [succade](https://github.com/domsson/succade), a Lemonbar wrapper I wrote.
+These can then be used to gather and/ or pipe information to a status bar, 
+notifications, fetch scripts, monitoring tools and many more.
 
 Check out the subdirectories for more information on each individual _candy_.
 
 ## Concept
 
-For the sake of consistency, all _candies_ should follow these design principles:
+For the sake of consistency, all candies should follow these design principles:
 
-- Simple program/script that returns as soon as possible
-- If possible, compiled native binary or shell script
+- Lightweight program/ script that returns as soon as possible
 - Set `stdout` to line buffering before printing the result
 - On success, print the result and a line break to `stdout`
 - On error, print nothing, just return with `EXIT_FAILURE`
-- By default, omit units (`%`, `°C`, etc) in the output
-- Enable printing of units, if applicable, with a `-u` argument
-- Omit the space between value and unit unless `-s` is given
+- By default, just print the raw result without label or units
 - Only print other output when requested by user via arguments
-- Candies that can monitor should enable this feature with `-m` (see below)
 
 ## Monitoring
 
-Monitoring refers to a candy's capability to keep running and printing its result over and over again (ideally only when the output has changed). If this option is present, it should be made available with the `-m` command line switch.
+Monitoring refers to a candy's capability to keep running and printing its 
+result over and over again, but only if the output has changed. 
 
-An example would be a CPU temperature program that prints the current temperature once when initially run, then prints it again whenever the temperature changes. Each print should be terminated with a line break (`\n`).
+An example would be a CPU temperature program that prints the current 
+temperature once when initially run, then prints it again whenever the 
+temperature has changed.
 
-Monitoring candies might want to optionally offer these two command line arguments:
+## Common/ reserved command line flags
 
-- `-t` to set the value-change threshold required to print again
-- `-i` to set the internal update interval (seconds between checking values)
+Where applicable, the following command line arguments should be available 
+for all candies and should hence be reserved for these purposes, if possible:
+
+ - `-h`: print help/ usage information and exit
+ - `-V`: print version info and exit
+ - `-u`: add the appropriate unit (`%`, `°C`, etc) to the output
+ - `-s`: add a space between the value and the unit
+ - `-p PRECISION`: number of decimals to include in the output
+ - `-f FORMAT`: format string for the output, using custom format specifiers
+ - `-m`: monitoring (keep running and printing upon change of value)
+ - `-k`: keep printing even if the output hasn't changed (only in combination with `-m`)
+ - `-i INTERVAL`: interval, in seconds, between probing/ printing of data (only in combination with `-m`)
 
 ## License
 
