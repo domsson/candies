@@ -43,4 +43,8 @@ None, apart from standard libraries and gcc for compiling.
 - `%T`: transmitted bytes (aka upload), absolute
 - `%C`: combined bytes (aka up & down), absolute
 
+### Examples
 
+Show combined (up and down) network usage, in percent (relative to 100 Mbit), with two decimal digits and keep printing whenever there is a change:
+
+    net-sysclass -I $(ip -o -4 route show to default | awk '{print $5}') -mus -p2
