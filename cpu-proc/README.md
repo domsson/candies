@@ -10,7 +10,8 @@ an [article on rosettacode](https://rosettacode.org/wiki/Linux_CPU_utilization).
 
 ## Dependencies
 
-None, apart from standard libraries and gcc for compiling.
+ - `gcc` for compiling
+ - `libc-dev` for standard libraries
 
 ## Building
 
