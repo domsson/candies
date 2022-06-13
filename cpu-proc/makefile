@@ -1,0 +1,25 @@
+CFLAGS += -Wall -O3
+LDLIBS := -lm
+PREFIX := /usr/local
+BINDIR := $(PREFIX)/bin
+NAME := cpu-proc
+
+all: bin/$(NAME)
+
+bin/$(NAME): src/$(NAME).c
+	mkdir -p bin
+	$(CC) $(CFLAGS) -o bin/$(NAME) src/$(NAME).c $(LDLIBS) 
+
+install: all
+	mkdir -p $(BINDIR)
+	strip bin/*
+	chmod +x bin/*
+	cp bin/* $(BINDIR)
+
+uninstall: 
+	rm -f $(BINDIR)/$(NAME)
+
+clean:
+	rm -f bin/$(NAME)
+
+.PHONY = all install uninstall clean
