@@ -5,7 +5,7 @@ NAME := mem-proc
 
 all: bin/$(NAME)
 
-bin/$(NAME): src/$(NAME).c
+bin/$(NAME): src/$(NAME).c src/candies.h
 	mkdir -p bin
 	$(CC) $(CFLAGS) -o bin/$(NAME) src/$(NAME).c
 
