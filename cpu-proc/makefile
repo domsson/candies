@@ -12,9 +12,11 @@ bin/$(NAME): src/$(NAME).c
 
 install: all
 	mkdir -p $(BINDIR)
-	strip bin/*
-	chmod +x bin/*
 	cp bin/* $(BINDIR)
+	chmod +x $(BINDIR)/$(NAME)
+
+install-strip: install
+	strip $(BINDIR)/$(NAME)
 
 uninstall: 
 	rm -f $(BINDIR)/$(NAME)
@@ -22,4 +24,4 @@ uninstall:
 clean:
 	rm -f bin/$(NAME)
 
-.PHONY = all install uninstall clean
+.PHONY = all install install-strip uninstall clean
