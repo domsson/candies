@@ -17,7 +17,7 @@
 #define DEFAULT_INTERVAL     1
 #define DEFAULT_PROCFILE    "/proc/meminfo"
 #define DEFAULT_GRANULARITY "g"
-#define DEFAULT_FORMAT      "%b"
+#define DEFAULT_FORMAT      "%u"
 
 #define STR_MEM_TOTAL "MemTotal"
 #define STR_MEM_FREE  "MemFree"

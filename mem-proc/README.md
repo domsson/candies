@@ -36,7 +36,7 @@ None (other than standard libraries and `gcc`).
     mem-proc [OPTIONS...]
 
 - `-b` use binary instead of decimal units (MiB vs MB, etc)
-- `-f FORMAT` format string for the output (see below); default is `%b`
+- `-f FORMAT` format string for the output (see below); default is `%u`
 - `-F FILE` file to query for memory info; default is `/proc/meminfo`
 - `-g GRANULARITY` value granularity (`k` for KB, `m` for MB, etc)
 - `-h` print usage information, then exit
