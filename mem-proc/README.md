@@ -58,7 +58,7 @@ None (other than standard libraries and `gcc`).
 
 ## Examples
 
-Print the bound memory in percent, with two decimal digits and space-separated unit:
+Print the used memory in percent, with two decimal digits and space-separated unit:
 
     $ ./bin/mem-proc -us -p 2
     23.11 %
